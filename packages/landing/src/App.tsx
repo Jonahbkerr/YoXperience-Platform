@@ -33,7 +33,7 @@ function LandingPage() {
         </p>
 
         <button 
-          onClick={() => window.location.href = 'https://app.yoxperience.com'}
+          onClick={() => window.location.href = '/dashboard/'}
           style={{
             padding: 'var(--yc-space-3) var(--yc-space-8)', backgroundColor: 'var(--yc-color-primary)', color: '#ffffff', border: 'none',
             borderRadius: 'var(--yc-radius-md)', fontSize: 'var(--yc-font-size-lg)', fontWeight: 'var(--yc-font-weight-semibold)', cursor: 'pointer', boxShadow: 'var(--yc-shadow-sm)', transition: 'background-color 0.2s ease'
@@ -341,7 +341,7 @@ export function App() {
           <a href="/#features" style={{ color: 'var(--yc-color-text-secondary)', textDecoration: 'none', fontWeight: 'var(--yc-font-weight-medium)' }}>Features</a>
           <a href="/#pricing" style={{ color: 'var(--yc-color-text-secondary)', textDecoration: 'none', fontWeight: 'var(--yc-font-weight-medium)' }}>Pricing</a>
           <Link to="/docs" style={{ color: 'var(--yc-color-text-secondary)', textDecoration: 'none', fontWeight: 'var(--yc-font-weight-medium)' }}>Docs</Link>
-          <a href="https://app.yoxperience.com" style={{
+          <a href="/dashboard/" style={{
             backgroundColor: 'var(--yc-color-primary)',
             padding: '8px 16px',
             borderRadius: '6px',
