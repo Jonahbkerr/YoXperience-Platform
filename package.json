@@ -1,0 +1,24 @@
+{
+  "name": "yoxperience-platform",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "gateway:generate": "npm -w @yoxperience/gateway run generate",
+    "gateway:migrate": "npm -w @yoxperience/gateway run migrate",
+    "dev:gateway": "npm -w @yoxperience/gateway run dev",
+    "dev:landing": "npm -w @yoxperience/landing run dev -- --host 0.0.0.0",
+    "dev:dashboard": "npm -w @yoxperience/dashboard run dev",
+    "dev": "concurrently \"npm run dev:gateway\" \"npm run dev:landing\" \"npm run dev:dashboard\"",
+    "build:landing": "npm -w @yoxperience/landing run build",
+    "build:dashboard": "npm -w @yoxperience/dashboard run build",
+    "build": "npm run build:landing && npm run build:dashboard",
+    "start": "NODE_ENV=production node --import tsx packages/gateway/src/index.ts",
+    "setup": "npm install && npm run gateway:migrate"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "typescript": "^5.7.0"
+  }
+}
