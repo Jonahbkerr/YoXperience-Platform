@@ -61,7 +61,7 @@ externalPort = 4200
 
 [deployment]
 deploymentTarget = "vm"
-run = ["bash", "-c", "NODE_ENV=production npx tsx packages/gateway/src/index.ts"]
+run = ["bash", "-c", "GATEWAY_PORT=5000 NODE_ENV=production npx tsx packages/gateway/src/index.ts"]
 build = ["bash", "-c", "cd /home/runner/workspace && npm -w @yoxperience/landing run build && npm -w @yoxperience/dashboard run build"]
 
 [agent]
