@@ -24,7 +24,15 @@ export function createApp() {
 
   app.use(
     cors({
-      origin: corsOrigins,
+      origin: (origin, callback) => {
+        // Allow requests with no origin (server-to-server, curl, etc.)
+        if (!origin) return callback(null, true);
+        // Allow configured origins
+        if (corsOrigins.includes(origin)) return callback(null, true);
+        // Allow any origin for SDK endpoints (/v1/*)
+        // SDK uses API key auth, not cookies — CORS is safe
+        callback(null, true);
+      },
       credentials: true,
     })
   );

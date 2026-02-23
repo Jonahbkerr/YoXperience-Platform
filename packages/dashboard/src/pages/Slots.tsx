@@ -84,9 +84,13 @@ export default function Slots() {
   }, [selectedProject?.id]);
 
   const addVariant = () => {
-    const v = variantInput.trim();
-    if (v && !variants.includes(v)) {
-      setVariants([...variants, v]);
+    // Support comma-separated input (e.g. "default, direct, social_proof")
+    const parts = variantInput
+      .split(",")
+      .map((s) => s.trim().replace(/\s+/g, "_"))
+      .filter((s) => s && !variants.includes(s));
+    if (parts.length > 0) {
+      setVariants([...variants, ...parts]);
       setVariantInput("");
     }
   };
@@ -445,7 +449,7 @@ export default function Slots() {
                     style={{ ...inputStyle, flex: 1 }}
                     value={variantInput}
                     onChange={(e) => setVariantInput(e.target.value)}
-                    placeholder="minimal"
+                    placeholder="default, compact, expanded"
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
@@ -455,10 +459,19 @@ export default function Slots() {
                   />
                   <button
                     type="button"
-                    onClick={addVariant}
-                    style={{ ...btnOutline, padding: "8px 12px" }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      addVariant();
+                    }}
+                    style={{
+                      ...btnPrimary,
+                      padding: "8px 16px",
+                      fontSize: "16px",
+                      flexShrink: 0,
+                    }}
                   >
-                    +
+                    Add
                   </button>
                 </div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -507,7 +520,9 @@ export default function Slots() {
                       marginTop: 4,
                     }}
                   >
-                    Add at least one variant. The first one is the default.
+                    Type variant names separated by commas, then click Add.
+                    <br />
+                    The first variant becomes the default.
                   </div>
                 )}
               </div>
