@@ -57,6 +57,16 @@ export function createApp() {
       const eventsRes = await pool.query("SELECT count(*)::int as count FROM telemetry_events");
       const slotsRes = await pool.query("SELECT count(*)::int as count FROM slot_definitions");
       const keysRes = await pool.query("SELECT count(*)::int as count FROM api_keys");
+      const projectsRes = await pool.query("SELECT id, name FROM projects");
+      const eventsByProject = await pool.query(
+        "SELECT project_id, count(*)::int as count FROM telemetry_events GROUP BY project_id"
+      );
+      const slotsByProject = await pool.query(
+        "SELECT project_id, count(*)::int as count FROM slot_definitions GROUP BY project_id"
+      );
+      const keysByProject = await pool.query(
+        "SELECT project_id, count(*)::int as count, bool_or(is_active) as has_active FROM api_keys GROUP BY project_id"
+      );
       res.json({
         status: "ok",
         service: "yoxperience-gateway",
@@ -65,6 +75,10 @@ export function createApp() {
           slots: slotsRes.rows[0].count,
           keys: keysRes.rows[0].count,
         },
+        projects: projectsRes.rows,
+        eventsByProject: eventsByProject.rows,
+        slotsByProject: slotsByProject.rows,
+        keysByProject: keysByProject.rows,
       });
     } catch (err: any) {
       res.json({ status: "ok", service: "yoxperience-gateway", dbError: err.message });
