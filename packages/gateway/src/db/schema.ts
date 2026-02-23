@@ -93,6 +93,53 @@ export const apiKeys = pgTable("api_keys", {
   lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
 });
 
+// ── Slot Definitions ──────────────────────────────────────────
+export const slotDefinitions = pgTable("slot_definitions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  projectId: uuid("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  slotKey: text("slot_key").notNull(),
+  description: text("description"),
+  variants: text("variants").notNull(), // JSON array of variant names
+  defaultVariant: text("default_variant").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+// ── End User Preferences ──────────────────────────────────────
+export const endUserPreferences = pgTable("end_user_preferences", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  projectId: uuid("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  endUserId: text("end_user_id").notNull(),
+  slotKey: text("slot_key").notNull(),
+  variantWeights: text("variant_weights").notNull(), // JSON object
+  resolvedVariant: text("resolved_variant").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+// ── Telemetry Events ──────────────────────────────────────────
+export const telemetryEvents = pgTable("telemetry_events", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  projectId: uuid("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  endUserId: text("end_user_id").notNull(),
+  slotKey: text("slot_key").notNull(),
+  variant: text("variant").notNull(),
+  eventType: text("event_type").notNull(),
+  metadata: text("metadata"), // JSON
+  processedAt: timestamp("processed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 // ── Refresh Tokens ─────────────────────────────────────────────
 export const refreshTokens = pgTable("refresh_tokens", {
   id: uuid("id").defaultRandom().primaryKey(),
