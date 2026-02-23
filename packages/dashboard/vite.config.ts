@@ -11,6 +11,10 @@ export default defineConfig({
         target: "http://localhost:3457",
         changeOrigin: true,
       },
+      "/api": {
+        target: "http://localhost:3457",
+        changeOrigin: true,
+      },
       "/health": {
         target: "http://localhost:3457",
         changeOrigin: true,

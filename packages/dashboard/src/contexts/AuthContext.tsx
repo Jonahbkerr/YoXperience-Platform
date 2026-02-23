@@ -37,6 +37,7 @@ interface AuthContextValue extends AuthState {
   }) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -164,6 +165,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    try {
+      const me = await api<{
+        user: User;
+        org: Org | null;
+        role: string | null;
+      }>("/auth/me");
+      setState({ user: me.user, org: me.org, role: me.role, loading: false });
+    } catch {
+      // leave state as-is if refresh fails
+    }
+  }, []);
+
   const logoutFn = useCallback(async () => {
     try {
       await api("/auth/logout", { method: "POST" });
@@ -175,7 +189,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ ...state, signup, login, logout: logoutFn }}
+      value={{ ...state, signup, login, logout: logoutFn, refreshUser }}
     >
       {children}
     </AuthContext.Provider>

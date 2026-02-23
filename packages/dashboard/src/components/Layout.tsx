@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, LogOut } from "lucide-react";
+import { LayoutDashboard, Layers, Users, Settings, LogOut } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext.js";
 
 const sidebarWidth = 240;
@@ -84,6 +84,27 @@ export function Layout() {
           >
             <LayoutDashboard size={18} />
             Overview
+          </NavLink>
+          <NavLink
+            to="/projects"
+            style={({ isActive }) => (isActive ? navItemActive : navItemBase)}
+          >
+            <Layers size={18} />
+            Projects
+          </NavLink>
+          <NavLink
+            to="/team"
+            style={({ isActive }) => (isActive ? navItemActive : navItemBase)}
+          >
+            <Users size={18} />
+            Team
+          </NavLink>
+          <NavLink
+            to="/settings"
+            style={({ isActive }) => (isActive ? navItemActive : navItemBase)}
+          >
+            <Settings size={18} />
+            Settings
           </NavLink>
         </nav>
 

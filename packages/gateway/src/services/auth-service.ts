@@ -14,15 +14,9 @@ import {
   verifyAccessToken,
   type AccessTokenPayload,
 } from "./token-service.js";
+import { slugify } from "../lib/slugify.js";
 
 const SALT_ROUNDS = 12;
-
-function slugify(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-}
 
 interface SignupInput {
   email: string;

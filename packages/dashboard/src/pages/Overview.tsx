@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { Layers, Key, Users, ArrowRight } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext.js";
 
@@ -10,6 +11,7 @@ const cardStyle: React.CSSProperties = {
 
 export default function Overview() {
   const { user, org } = useAuth();
+  const navigate = useNavigate();
 
   return (
     <div>
@@ -24,7 +26,7 @@ export default function Overview() {
           Welcome back, {user?.name?.split(" ")[0]}
         </h1>
         <p style={{ color: "var(--yc-color-text-secondary)" }}>
-          {org?.name} &middot; Hobby plan
+          {org?.name} &middot; {org?.plan ? org.plan.charAt(0).toUpperCase() + org.plan.slice(1) : "Hobby"} plan
         </p>
       </div>
 
@@ -114,19 +116,28 @@ export default function Overview() {
             icon: <Layers size={20} />,
             title: "Projects",
             desc: "Manage your apps and configurations",
+            path: "/projects",
           },
           {
             icon: <Key size={20} />,
             title: "API Keys",
             desc: "Generate and manage access keys",
+            path: "/projects",
           },
           {
             icon: <Users size={20} />,
             title: "Team",
             desc: "Invite members to your organization",
+            path: "/team",
           },
         ].map((card) => (
-          <div key={card.title} style={cardStyle}>
+          <div
+            key={card.title}
+            style={{ ...cardStyle, cursor: "pointer", transition: "border-color 0.15s" }}
+            onClick={() => navigate(card.path)}
+            onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--yc-color-primary)")}
+            onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--yc-color-border-secondary)")}
+          >
             <div
               style={{
                 display: "flex",
@@ -164,10 +175,9 @@ export default function Overview() {
                 fontSize: "var(--yc-font-size-sm)",
                 color: "var(--yc-color-primary)",
                 fontWeight: "var(--yc-font-weight-medium)",
-                cursor: "pointer",
               }}
             >
-              Coming soon <ArrowRight size={14} />
+              Get started <ArrowRight size={14} />
             </span>
           </div>
         ))}

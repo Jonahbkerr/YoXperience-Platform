@@ -4,6 +4,9 @@ import cookieParser from "cookie-parser";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import authRouter from "./routes/auth.js";
+import organizationsRouter from "./routes/organizations.js";
+import projectsRouter from "./routes/projects.js";
+import apiKeysRouter from "./routes/api-keys.js";
 import { errorHandler } from "./middleware/error-handler.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -27,6 +30,9 @@ export function createApp() {
 
   // API routes
   app.use("/auth", authRouter);
+  app.use("/api/organizations", organizationsRouter);
+  app.use("/api/projects", projectsRouter);
+  app.use("/api/projects/:projectId/keys", apiKeysRouter);
 
   // Health check
   app.get("/health", (_req, res) => {
