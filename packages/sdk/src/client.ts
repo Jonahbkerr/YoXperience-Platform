@@ -29,9 +29,21 @@ export function createYoXperienceClient(
         method: "POST",
         headers,
         body: JSON.stringify({ userId, events }),
-      }).catch(() => {
-        // Fire-and-forget: swallow network errors for telemetry
-      });
+      }).catch(() => {});
+    },
+
+    async registerSlots(
+      slots: Array<{
+        slotKey: string;
+        variants: string[];
+        defaultVariant?: string;
+      }>
+    ): Promise<void> {
+      await fetch(`${baseUrl}/v1/register-slots`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ slots }),
+      }).catch(() => {});
     },
   };
 }

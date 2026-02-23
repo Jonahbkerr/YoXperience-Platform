@@ -47,4 +47,5 @@ export interface YoXperienceContextValue {
     eventType: string,
     metadata?: Record<string, unknown>,
   ) => void;
+  registerSlot: (slotKey: string, variants: string[]) => void;
 }

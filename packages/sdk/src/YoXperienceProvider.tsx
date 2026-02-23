@@ -48,6 +48,11 @@ export function YoXperienceProvider({
     }>
   >([]);
 
+  // Slot registry: collects slot definitions from <Slot> components after mount
+  const slotRegistryRef = useRef<Map<string, string[]>>(new Map());
+  const registrationSentRef = useRef(false);
+  const registrationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const fetchConfig = useCallback(async () => {
     try {
       const layout = await clientRef.current.fetchLayout(userId);
@@ -95,9 +100,34 @@ export function YoXperienceProvider({
     []
   );
 
+  // Called by <Slot> components on mount to register their slot key + variant names.
+  // Debounces 500ms so all Slot components on the page register before we send.
+  const registerSlot = useCallback((slotKey: string, variants: string[]) => {
+    slotRegistryRef.current.set(slotKey, variants);
+
+    // Reset timer — wait for more Slot components to register
+    if (registrationTimerRef.current) {
+      clearTimeout(registrationTimerRef.current);
+    }
+    registrationTimerRef.current = setTimeout(() => {
+      if (registrationSentRef.current) return;
+      registrationSentRef.current = true;
+
+      const slots = Array.from(slotRegistryRef.current.entries()).map(
+        ([key, vars]) => ({ slotKey: key, variants: vars })
+      );
+      if (slots.length > 0) {
+        clientRef.current.registerSlots(slots).then(() => {
+          // Re-fetch layout after registration so new slots are included
+          fetchConfig();
+        });
+      }
+    }, 500);
+  }, [fetchConfig]);
+
   return (
     <YoXperienceContext.Provider
-      value={{ config, isLoading, error, trackEvent }}
+      value={{ config, isLoading, error, trackEvent, registerSlot }}
     >
       {children}
     </YoXperienceContext.Provider>

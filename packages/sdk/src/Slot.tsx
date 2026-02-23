@@ -1,9 +1,18 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useYoXperience } from "./YoXperienceProvider.js";
 import type { SlotProps, VariantProps, YoXperienceContextValue } from "./types.js";
 
 export function Slot({ name, variants, fallback = null }: SlotProps) {
-  const { config, isLoading, trackEvent } = useYoXperience();
+  const { config, isLoading, trackEvent, registerSlot } = useYoXperience();
+  const registeredRef = useRef(false);
+
+  // Auto-register this slot with the gateway on first mount
+  useEffect(() => {
+    if (!registeredRef.current) {
+      registeredRef.current = true;
+      registerSlot(name, Object.keys(variants));
+    }
+  }, [name, variants, registerSlot]);
 
   if (isLoading || !config) {
     return <>{fallback}</>;
@@ -11,16 +20,22 @@ export function Slot({ name, variants, fallback = null }: SlotProps) {
 
   const slotConfig = config.slots[name];
   if (!slotConfig) {
-    console.warn(`Slot: no config found for slot "${name}"`);
-    return null;
+    // No server config yet — render first variant as default
+    const fallbackKey = Object.keys(variants)[0];
+    if (!fallbackKey) return null;
+    const FallbackComponent = variants[fallbackKey];
+    return (
+      <SlotWrapper
+        Component={FallbackComponent}
+        slotKey={name}
+        variant={fallbackKey}
+        trackEvent={trackEvent}
+      />
+    );
   }
 
   const Component = variants[slotConfig.variant];
   if (!Component) {
-    console.warn(
-      `Slot: no component for variant "${slotConfig.variant}" in slot "${name}". ` +
-        `Available: ${Object.keys(variants).join(", ")}`
-    );
     const fallbackKey = Object.keys(variants)[0];
     if (!fallbackKey) return null;
     const FallbackComponent = variants[fallbackKey];
