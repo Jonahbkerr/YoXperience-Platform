@@ -50,9 +50,26 @@ export function createApp() {
   // SDK routes (API key auth, not JWT)
   app.use("/v1", sdkRouter);
 
-  // Health check
-  app.get("/health", (_req, res) => {
-    res.json({ status: "ok", service: "yoxperience-gateway" });
+  // Health check + debug
+  app.get("/health", async (_req, res) => {
+    try {
+      const { db } = await import("./db/client.js");
+      const { sql } = await import("drizzle-orm");
+      const [events] = await db.execute(sql`SELECT count(*) as count FROM telemetry_events`);
+      const [slots] = await db.execute(sql`SELECT count(*) as count FROM slot_definitions`);
+      const [keys] = await db.execute(sql`SELECT count(*) as count FROM api_keys`);
+      res.json({
+        status: "ok",
+        service: "yoxperience-gateway",
+        db: {
+          events: events.count,
+          slots: slots.count,
+          keys: keys.count,
+        },
+      });
+    } catch (err: any) {
+      res.json({ status: "ok", service: "yoxperience-gateway", dbError: err.message });
+    }
   });
 
   // Production static serving
