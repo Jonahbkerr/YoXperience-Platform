@@ -53,18 +53,17 @@ export function createApp() {
   // Health check + debug
   app.get("/health", async (_req, res) => {
     try {
-      const { db } = await import("./db/client.js");
-      const { sql } = await import("drizzle-orm");
-      const [events] = await db.execute(sql`SELECT count(*) as count FROM telemetry_events`);
-      const [slots] = await db.execute(sql`SELECT count(*) as count FROM slot_definitions`);
-      const [keys] = await db.execute(sql`SELECT count(*) as count FROM api_keys`);
+      const { pool } = await import("./db/client.js");
+      const eventsRes = await pool.query("SELECT count(*)::int as count FROM telemetry_events");
+      const slotsRes = await pool.query("SELECT count(*)::int as count FROM slot_definitions");
+      const keysRes = await pool.query("SELECT count(*)::int as count FROM api_keys");
       res.json({
         status: "ok",
         service: "yoxperience-gateway",
         db: {
-          events: events.count,
-          slots: slots.count,
-          keys: keys.count,
+          events: eventsRes.rows[0].count,
+          slots: slotsRes.rows[0].count,
+          keys: keysRes.rows[0].count,
         },
       });
     } catch (err: any) {
