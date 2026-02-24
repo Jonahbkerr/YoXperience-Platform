@@ -13,6 +13,7 @@ export const apiKeyTypeEnum = pgEnum("api_key_type", [
   "publishable",
   "secret",
 ]);
+export const slotModeEnum = pgEnum("slot_mode", ["auto", "forced", "split"]);
 
 // ── Organizations ──────────────────────────────────────────────
 export const organizations = pgTable("organizations", {
@@ -103,6 +104,9 @@ export const slotDefinitions = pgTable("slot_definitions", {
   description: text("description"),
   variants: text("variants").notNull(), // JSON array of variant names
   defaultVariant: text("default_variant").notNull(),
+  mode: slotModeEnum("mode").notNull().default("auto"),
+  forcedVariant: text("forced_variant"),
+  trafficSplit: text("traffic_split"), // JSON object e.g. {"icon":50,"gauge":30,"number":20}
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

@@ -153,6 +153,57 @@ router.patch(
       if (req.body.defaultVariant !== undefined)
         updates.defaultVariant = req.body.defaultVariant;
 
+      // Resolve the current variants list (may be updated in this request)
+      const currentVariants: string[] = req.body.variants
+        ? req.body.variants
+        : JSON.parse(existing.variants);
+
+      // Mode control fields
+      if (req.body.mode !== undefined) {
+        const validModes = ["auto", "forced", "split"];
+        if (!validModes.includes(req.body.mode)) {
+          res.status(400).json({ error: "mode must be 'auto', 'forced', or 'split'" });
+          return;
+        }
+        updates.mode = req.body.mode;
+      }
+
+      if (req.body.forcedVariant !== undefined) {
+        if (req.body.forcedVariant !== null && !currentVariants.includes(req.body.forcedVariant)) {
+          res.status(400).json({ error: "forcedVariant must be one of the defined variants" });
+          return;
+        }
+        updates.forcedVariant = req.body.forcedVariant;
+      }
+
+      if (req.body.trafficSplit !== undefined) {
+        if (req.body.trafficSplit !== null) {
+          const split = req.body.trafficSplit;
+          if (typeof split !== "object" || Array.isArray(split)) {
+            res.status(400).json({ error: "trafficSplit must be an object" });
+            return;
+          }
+          for (const key of Object.keys(split)) {
+            if (!currentVariants.includes(key)) {
+              res.status(400).json({ error: `trafficSplit key '${key}' is not a defined variant` });
+              return;
+            }
+            if (typeof split[key] !== "number" || split[key] < 0) {
+              res.status(400).json({ error: "trafficSplit values must be non-negative numbers" });
+              return;
+            }
+          }
+          const sum = Object.values(split).reduce((a: number, b: unknown) => a + (b as number), 0);
+          if (Math.round(sum) !== 100) {
+            res.status(400).json({ error: `trafficSplit percentages must sum to 100 (got ${sum})` });
+            return;
+          }
+          updates.trafficSplit = JSON.stringify(split);
+        } else {
+          updates.trafficSplit = null;
+        }
+      }
+
       if (Object.keys(updates).length === 0) {
         res.json({ slot: existing });
         return;

@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
-import { Plus, Trash2, X } from "lucide-react";
+import { Plus, Trash2, X, Settings2, Save } from "lucide-react";
 import { api } from "../lib/api-client.js";
+
+type SlotMode = "auto" | "forced" | "split";
 
 interface SlotDefinition {
   id: string;
@@ -9,6 +11,9 @@ interface SlotDefinition {
   description: string | null;
   variants: string; // JSON array
   defaultVariant: string;
+  mode: SlotMode;
+  forcedVariant: string | null;
+  trafficSplit: string | null; // JSON object
   createdAt: string;
 }
 
@@ -57,6 +62,34 @@ const inputStyle: React.CSSProperties = {
   boxSizing: "border-box",
 };
 
+const modeTabStyle = (active: boolean): React.CSSProperties => ({
+  padding: "6px 14px",
+  fontSize: "var(--yc-font-size-xs)",
+  fontWeight: "var(--yc-font-weight-medium)",
+  border: "1px solid",
+  borderColor: active ? "var(--yc-color-primary)" : "var(--yc-color-border)",
+  borderRadius: "var(--yc-radius-md)",
+  background: active ? "var(--yc-color-primary)" : "transparent",
+  color: active ? "#fff" : "var(--yc-color-text-secondary)",
+  cursor: "pointer",
+});
+
+const modeBadge = (mode: SlotMode, forcedVariant: string | null, trafficSplit: string | null): { text: string; color: string; bg: string } | null => {
+  if (mode === "forced" && forcedVariant) {
+    return { text: `Forced: ${forcedVariant}`, color: "#c084fc", bg: "rgba(192, 132, 252, 0.12)" };
+  }
+  if (mode === "split" && trafficSplit) {
+    const split: Record<string, number> = JSON.parse(trafficSplit);
+    const parts = Object.entries(split).map(([v, p]) => `${v} ${p}%`).join(", ");
+    return { text: `Split: ${parts}`, color: "#22d3ee", bg: "rgba(34, 211, 238, 0.12)" };
+  }
+  return null;
+};
+
+interface SplitEditState {
+  [variant: string]: string; // string values for input fields
+}
+
 export default function Slots() {
   const { selectedProject } = useOutletContext<LayoutContext>();
   const [slots, setSlots] = useState<SlotDefinition[]>([]);
@@ -68,6 +101,14 @@ export default function Slots() {
   const [variants, setVariants] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
+
+  // Variant control state
+  const [configSlotId, setConfigSlotId] = useState<string | null>(null);
+  const [editMode, setEditMode] = useState<SlotMode>("auto");
+  const [editForced, setEditForced] = useState("");
+  const [editSplit, setEditSplit] = useState<SplitEditState>({});
+  const [saving, setSaving] = useState(false);
+  const [configError, setConfigError] = useState("");
 
   useEffect(() => {
     if (!selectedProject) {
@@ -139,6 +180,64 @@ export default function Slots() {
       setSlots((prev) => prev.filter((s) => s.id !== slotId));
     } catch (err: any) {
       alert(err.message);
+    }
+  };
+
+  const openConfig = (slot: SlotDefinition) => {
+    const parsedVariants: string[] = JSON.parse(slot.variants);
+    setConfigSlotId(slot.id);
+    setEditMode(slot.mode ?? "auto");
+    setEditForced(slot.forcedVariant ?? parsedVariants[0] ?? "");
+    if (slot.trafficSplit) {
+      const split: Record<string, number> = JSON.parse(slot.trafficSplit);
+      const state: SplitEditState = {};
+      for (const v of parsedVariants) {
+        state[v] = String(split[v] ?? 0);
+      }
+      setEditSplit(state);
+    } else {
+      const even = Math.floor(100 / parsedVariants.length);
+      const remainder = 100 - even * parsedVariants.length;
+      const state: SplitEditState = {};
+      parsedVariants.forEach((v, i) => {
+        state[v] = String(even + (i === 0 ? remainder : 0));
+      });
+      setEditSplit(state);
+    }
+    setConfigError("");
+  };
+
+  const handleSaveConfig = async (slotId: string) => {
+    if (!selectedProject) return;
+    setSaving(true);
+    setConfigError("");
+    try {
+      const body: Record<string, unknown> = { mode: editMode };
+      if (editMode === "forced") {
+        body.forcedVariant = editForced;
+      } else if (editMode === "split") {
+        const split: Record<string, number> = {};
+        for (const [v, val] of Object.entries(editSplit)) {
+          split[v] = Number(val) || 0;
+        }
+        const sum = Object.values(split).reduce((a, b) => a + b, 0);
+        if (sum !== 100) {
+          setConfigError(`Traffic split must sum to 100% (currently ${sum}%)`);
+          setSaving(false);
+          return;
+        }
+        body.trafficSplit = split;
+      }
+      const res = await api<{ slot: SlotDefinition }>(
+        `/api/projects/${selectedProject.id}/slots/${slotId}`,
+        { method: "PATCH", body: JSON.stringify(body) }
+      );
+      setSlots((prev) => prev.map((s) => (s.id === slotId ? res.slot : s)));
+      setConfigSlotId(null);
+    } catch (err: any) {
+      setConfigError(err.message);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -247,85 +346,347 @@ export default function Slots() {
         >
           {slots.map((slot) => {
             const parsedVariants: string[] = JSON.parse(slot.variants);
+            const badge = modeBadge(slot.mode, slot.forcedVariant, slot.trafficSplit);
+            const isConfigOpen = configSlotId === slot.id;
             return (
-              <div key={slot.id} style={cardStyle}>
-                <div
-                  style={{
-                    width: 36,
-                    height: 36,
-                    background: "var(--yc-color-brand-50)",
-                    borderRadius: "var(--yc-radius-lg)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 16,
-                    flexShrink: 0,
-                  }}
-                >
-                  ▦
-                </div>
-                <div style={{ flex: 1 }}>
+              <div key={slot.id} style={{ ...cardStyle, flexDirection: "column", gap: 0 }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 14, width: "100%" }}>
                   <div
                     style={{
-                      fontFamily: "var(--yc-font-mono)",
-                      fontSize: "var(--yc-font-size-base)",
-                      fontWeight: "var(--yc-font-weight-semibold)",
-                      color: "var(--yc-color-primary)",
-                      marginBottom: 3,
+                      width: 36,
+                      height: 36,
+                      background: "var(--yc-color-brand-50)",
+                      borderRadius: "var(--yc-radius-lg)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 16,
+                      flexShrink: 0,
                     }}
                   >
-                    {slot.slotKey}
+                    ▦
                   </div>
-                  {slot.description && (
+                  <div style={{ flex: 1 }}>
                     <div
                       style={{
-                        fontSize: "var(--yc-font-size-xs)",
-                        color: "var(--yc-color-text-secondary)",
-                        marginBottom: 8,
+                        fontFamily: "var(--yc-font-mono)",
+                        fontSize: "var(--yc-font-size-base)",
+                        fontWeight: "var(--yc-font-weight-semibold)",
+                        color: "var(--yc-color-primary)",
+                        marginBottom: 3,
                       }}
                     >
-                      {slot.description}
+                      {slot.slotKey}
                     </div>
-                  )}
-                  <div
-                    style={{ display: "flex", gap: 4, flexWrap: "wrap" }}
-                  >
-                    {parsedVariants.map((v, i) => (
-                      <span
-                        key={v}
+                    {slot.description && (
+                      <div
                         style={{
-                          display: "inline-block",
-                          padding: "2px 8px",
-                          borderRadius: "var(--yc-radius-full)",
                           fontSize: "var(--yc-font-size-xs)",
-                          fontWeight: "var(--yc-font-weight-medium)",
-                          background:
-                            i === 0
-                              ? "var(--yc-color-primary)"
-                              : "var(--yc-color-fill)",
-                          color: i === 0 ? "#fff" : "var(--yc-color-text-secondary)",
+                          color: "var(--yc-color-text-secondary)",
+                          marginBottom: 8,
                         }}
                       >
-                        {v}
-                        {i === 0 ? " (default)" : ""}
-                      </span>
-                    ))}
+                        {slot.description}
+                      </div>
+                    )}
+                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
+                      {parsedVariants.map((v, i) => (
+                        <span
+                          key={v}
+                          style={{
+                            display: "inline-block",
+                            padding: "2px 8px",
+                            borderRadius: "var(--yc-radius-full)",
+                            fontSize: "var(--yc-font-size-xs)",
+                            fontWeight: "var(--yc-font-weight-medium)",
+                            background:
+                              i === 0
+                                ? "var(--yc-color-primary)"
+                                : "var(--yc-color-fill)",
+                            color: i === 0 ? "#fff" : "var(--yc-color-text-secondary)",
+                          }}
+                        >
+                          {v}
+                          {i === 0 ? " (default)" : ""}
+                        </span>
+                      ))}
+                      {badge && (
+                        <span
+                          style={{
+                            display: "inline-block",
+                            padding: "2px 8px",
+                            borderRadius: "var(--yc-radius-full)",
+                            fontSize: "var(--yc-font-size-xs)",
+                            fontWeight: "var(--yc-font-weight-medium)",
+                            color: badge.color,
+                            background: badge.bg,
+                            marginLeft: 4,
+                          }}
+                        >
+                          {badge.text}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                    <button
+                      onClick={() => isConfigOpen ? setConfigSlotId(null) : openConfig(slot)}
+                      style={{
+                        background: isConfigOpen ? "var(--yc-color-primary)" : "none",
+                        border: isConfigOpen ? "none" : "1px solid var(--yc-color-border)",
+                        borderRadius: "var(--yc-radius-md)",
+                        cursor: "pointer",
+                        color: isConfigOpen ? "#fff" : "var(--yc-color-text-secondary)",
+                        padding: "4px 8px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                        fontSize: "var(--yc-font-size-xs)",
+                      }}
+                      title="Configure variant selection"
+                    >
+                      <Settings2 size={14} /> Configure
+                    </button>
+                    <button
+                      onClick={() => handleDelete(slot.id)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        color: "var(--yc-color-text-tertiary)",
+                        padding: 4,
+                      }}
+                      title="Delete slot"
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </div>
                 </div>
-                <button
-                  onClick={() => handleDelete(slot.id)}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    color: "var(--yc-color-text-tertiary)",
-                    flexShrink: 0,
-                    padding: 4,
-                  }}
-                  title="Delete slot"
-                >
-                  <Trash2 size={14} />
-                </button>
+
+                {/* Configuration Panel */}
+                {isConfigOpen && (
+                  <div
+                    style={{
+                      marginTop: 14,
+                      paddingTop: 14,
+                      borderTop: "1px solid var(--yc-color-border-secondary)",
+                      width: "100%",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: "var(--yc-font-size-sm)",
+                        fontWeight: "var(--yc-font-weight-medium)",
+                        marginBottom: 10,
+                      }}
+                    >
+                      Variant selection mode
+                    </div>
+                    <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
+                      <button
+                        style={modeTabStyle(editMode === "auto")}
+                        onClick={() => setEditMode("auto")}
+                      >
+                        Auto (EMA)
+                      </button>
+                      <button
+                        style={modeTabStyle(editMode === "forced")}
+                        onClick={() => setEditMode("forced")}
+                      >
+                        Force Winner
+                      </button>
+                      <button
+                        style={modeTabStyle(editMode === "split")}
+                        onClick={() => setEditMode("split")}
+                      >
+                        Traffic Split
+                      </button>
+                    </div>
+
+                    {editMode === "auto" && (
+                      <div
+                        style={{
+                          fontSize: "var(--yc-font-size-xs)",
+                          color: "var(--yc-color-text-tertiary)",
+                          marginBottom: 14,
+                          lineHeight: 1.5,
+                        }}
+                      >
+                        The EMA algorithm automatically learns which variant performs best
+                        for each user based on engagement signals (clicks, hovers, scrolls, dismissals).
+                      </div>
+                    )}
+
+                    {editMode === "forced" && (
+                      <div style={{ marginBottom: 14 }}>
+                        <label
+                          style={{
+                            display: "block",
+                            fontSize: "var(--yc-font-size-xs)",
+                            color: "var(--yc-color-text-secondary)",
+                            marginBottom: 4,
+                          }}
+                        >
+                          All users will see this variant:
+                        </label>
+                        <select
+                          value={editForced}
+                          onChange={(e) => setEditForced(e.target.value)}
+                          style={{
+                            ...inputStyle,
+                            width: "auto",
+                            minWidth: 160,
+                          }}
+                        >
+                          {parsedVariants.map((v) => (
+                            <option key={v} value={v}>
+                              {v}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {editMode === "split" && (
+                      <div style={{ marginBottom: 14 }}>
+                        <label
+                          style={{
+                            display: "block",
+                            fontSize: "var(--yc-font-size-xs)",
+                            color: "var(--yc-color-text-secondary)",
+                            marginBottom: 8,
+                          }}
+                        >
+                          Distribute traffic across variants (must total 100%):
+                        </label>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          {parsedVariants.map((v) => (
+                            <div
+                              key={v}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 8,
+                              }}
+                            >
+                              <span
+                                style={{
+                                  fontFamily: "var(--yc-font-mono)",
+                                  fontSize: "var(--yc-font-size-xs)",
+                                  minWidth: 100,
+                                  color: "var(--yc-color-text-primary)",
+                                }}
+                              >
+                                {v}
+                              </span>
+                              <input
+                                type="number"
+                                min={0}
+                                max={100}
+                                value={editSplit[v] ?? "0"}
+                                onChange={(e) =>
+                                  setEditSplit((prev) => ({
+                                    ...prev,
+                                    [v]: e.target.value,
+                                  }))
+                                }
+                                style={{
+                                  ...inputStyle,
+                                  width: 72,
+                                  textAlign: "right",
+                                }}
+                              />
+                              <span
+                                style={{
+                                  fontSize: "var(--yc-font-size-xs)",
+                                  color: "var(--yc-color-text-tertiary)",
+                                }}
+                              >
+                                %
+                              </span>
+                              {/* Visual bar */}
+                              <div
+                                style={{
+                                  flex: 1,
+                                  height: 6,
+                                  borderRadius: 3,
+                                  background: "var(--yc-color-fill)",
+                                  overflow: "hidden",
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    width: `${Math.min(Number(editSplit[v]) || 0, 100)}%`,
+                                    height: "100%",
+                                    borderRadius: 3,
+                                    background: "var(--yc-color-primary)",
+                                    transition: "width 0.2s",
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        {(() => {
+                          const sum = Object.values(editSplit).reduce(
+                            (a, b) => a + (Number(b) || 0),
+                            0
+                          );
+                          return sum !== 100 ? (
+                            <div
+                              style={{
+                                fontSize: "var(--yc-font-size-xs)",
+                                color: "var(--yc-color-error)",
+                                marginTop: 6,
+                              }}
+                            >
+                              Total: {sum}% (must be 100%)
+                            </div>
+                          ) : (
+                            <div
+                              style={{
+                                fontSize: "var(--yc-font-size-xs)",
+                                color: "var(--yc-color-success, #22c55e)",
+                                marginTop: 6,
+                              }}
+                            >
+                              Total: 100%
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
+
+                    {configError && (
+                      <div
+                        style={{
+                          color: "var(--yc-color-error)",
+                          fontSize: "var(--yc-font-size-xs)",
+                          marginBottom: 10,
+                        }}
+                      >
+                        {configError}
+                      </div>
+                    )}
+
+                    <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                      <button
+                        style={btnOutline}
+                        onClick={() => setConfigSlotId(null)}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        style={btnPrimary}
+                        disabled={saving}
+                        onClick={() => handleSaveConfig(slot.id)}
+                      >
+                        <Save size={14} />
+                        {saving ? "Saving..." : "Save"}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}
