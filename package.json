@@ -8,6 +8,7 @@
     "gateway:generate": "npm -w @yoxperience/gateway run generate",
     "gateway:migrate": "npm -w @yoxperience/gateway run migrate",
     "dev:gateway": "npm -w @yoxperience/gateway run dev",
+    "dev:mvp": "npx tsx packages/gateway/src/mvp/server.ts",
     "dev:landing": "npm -w @yoxperience/landing run dev -- --host 0.0.0.0",
     "dev:dashboard": "npm -w @yoxperience/dashboard run dev",
     "dev": "concurrently \"npm run dev:gateway\" \"npm run dev:landing\" \"npm run dev:dashboard\"",
