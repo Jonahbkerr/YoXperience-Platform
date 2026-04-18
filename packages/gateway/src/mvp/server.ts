@@ -6,6 +6,7 @@ import { LMClient } from './lm-bridge/client';
 import { IntegrationRegistry } from './integrations/registry';
 import { TokenStore } from './integrations/token-store';
 import { GmailIntegration } from './integrations/gmail';
+import { CalendarIntegration } from './integrations/calendar';
 import { eventsRouter } from './routes/events';
 import { renderRouter } from './routes/render';
 import { integrationsRouter } from './routes/integrations';
@@ -24,6 +25,7 @@ export function buildMvpApp() {
   const tokenStore = new TokenStore(db);
   const registry = new IntegrationRegistry();
   registry.register(new GmailIntegration(tokenStore));
+  registry.register(new CalendarIntegration(tokenStore));
 
   for (const name of tokenStore.list()) registry.enable(name);
 
