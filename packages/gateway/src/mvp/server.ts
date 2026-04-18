@@ -7,6 +7,7 @@ import { IntegrationRegistry } from './integrations/registry';
 import { TokenStore } from './integrations/token-store';
 import { GmailIntegration } from './integrations/gmail';
 import { CalendarIntegration } from './integrations/calendar';
+import { SlackIntegration } from './integrations/slack';
 import { eventsRouter } from './routes/events';
 import { renderRouter } from './routes/render';
 import { integrationsRouter } from './routes/integrations';
@@ -26,6 +27,7 @@ export function buildMvpApp() {
   const registry = new IntegrationRegistry();
   registry.register(new GmailIntegration(tokenStore));
   registry.register(new CalendarIntegration(tokenStore));
+  registry.register(new SlackIntegration(tokenStore));
 
   for (const name of tokenStore.list()) registry.enable(name);
 

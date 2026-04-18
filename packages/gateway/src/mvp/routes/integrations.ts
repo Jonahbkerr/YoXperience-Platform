@@ -12,10 +12,20 @@ export function integrationsRouter(tokenStore: TokenStore, registry: Integration
   const r = Router();
 
   r.get('/integrations', (_req, res) => {
+    const rawConnected = tokenStore.list();
+    const googleConnected = rawConnected.includes('gmail');
+    const connected: string[] = [];
+    for (const name of registry.names()) {
+      if (name === 'gmail' || name === 'calendar') {
+        if (googleConnected) connected.push(name);
+      } else if (rawConnected.includes(name)) {
+        connected.push(name);
+      }
+    }
     res.json({
       available: registry.names(),
       enabled: registry.enabledNames(),
-      connected: tokenStore.list(),
+      connected,
     });
   });
 
@@ -53,6 +63,32 @@ export function integrationsRouter(tokenStore: TokenStore, registry: Integration
     tokenStore.remove(req.params.name);
     registry.disable(req.params.name);
     res.json({ ok: true });
+  });
+
+  r.get('/integrations/slack/authorize', (_req, res) => {
+    const params = new URLSearchParams({
+      client_id: process.env.SLACK_CLIENT_ID ?? '',
+      scope: 'channels:read,channels:history,chat:write,groups:read',
+      redirect_uri: process.env.SLACK_REDIRECT_URI ?? '',
+    });
+    res.redirect(`https://slack.com/oauth/v2/authorize?${params}`);
+  });
+
+  r.get('/integrations/slack/callback', async (req, res) => {
+    const code = req.query.code as string;
+    if (!code) return res.status(400).send('missing code');
+    const body = new URLSearchParams({
+      code,
+      client_id: process.env.SLACK_CLIENT_ID ?? '',
+      client_secret: process.env.SLACK_CLIENT_SECRET ?? '',
+      redirect_uri: process.env.SLACK_REDIRECT_URI ?? '',
+    });
+    const resp = await fetch('https://slack.com/api/oauth.v2.access', { method: 'POST', body });
+    const json = await resp.json() as { ok: boolean; access_token?: string };
+    if (!json.ok) return res.status(400).json(json);
+    tokenStore.save('slack', json as unknown as Record<string, unknown>);
+    registry.enable('slack');
+    res.redirect('/mvp');
   });
 
   return r;

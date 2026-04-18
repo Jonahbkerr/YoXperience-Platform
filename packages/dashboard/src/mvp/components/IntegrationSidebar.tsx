@@ -34,7 +34,7 @@ export function IntegrationSidebar() {
                         style={{ fontSize: 11 }}>Disconnect</button>
               </>
             ) : (
-              <a href="/api/integrations/google/authorize"
+              <a href={name === 'slack' ? '/api/integrations/slack/authorize' : '/api/integrations/google/authorize'}
                  style={{ fontSize: 12 }}>Connect</a>
             )}
           </div>
