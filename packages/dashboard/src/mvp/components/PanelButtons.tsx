@@ -10,7 +10,7 @@ interface ResultState {
   pendingConfirm?: { integration: string; action: string; params: Record<string, unknown> };
 }
 
-export function PanelButtons({ buttons }: { buttons?: Button[] }) {
+export function PanelButtons({ buttons, onAction }: { buttons?: Button[]; onAction?: () => void }) {
   const [results, setResults] = useState<Record<number, ResultState>>({});
 
   if (!buttons || buttons.length === 0) return null;
@@ -36,6 +36,7 @@ export function PanelButtons({ buttons }: { buttons?: Button[] }) {
         ...r,
         [idx]: { ok: res.ok, result: res.result, error: res.error },
       }));
+      if (res.ok && onAction) onAction();
     } catch (e) {
       setResults(r => ({ ...r, [idx]: { ok: false, error: (e as Error).message } }));
     }

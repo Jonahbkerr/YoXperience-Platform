@@ -26,8 +26,11 @@ export function Dashboard() {
     }
   };
 
+  const onAction = () => {
+    setTimeout(() => reload(), 600);
+  };
+
   const statusText =
-    loading ? 'rendering…' :
     data?.fallback ? `LM Studio unreachable — ${data.error ?? 'fallback'}` :
     error ? error :
     data?.latency_ms ? `last render: ${(data.latency_ms / 1000).toFixed(1)}s` :
@@ -55,6 +58,14 @@ export function Dashboard() {
               fontWeight: 500,
             }}>
               DEMO MODE
+            </span>
+          )}
+          {loading && (
+            <span style={{ fontSize: 12, color: '#4a80d0', fontWeight: 500 }}>
+              <span className="yxp-thinking-dot" />
+              <span className="yxp-thinking-dot" />
+              <span className="yxp-thinking-dot" />
+              thinking…
             </span>
           )}
           <button
@@ -89,7 +100,11 @@ export function Dashboard() {
           </button>
           <span style={{ color: '#999', fontSize: 12, marginLeft: 'auto' }}>{statusText}</span>
         </header>
-        <DynamicPanelGrid panels={data?.plan.panels ?? []} />
+        <DynamicPanelGrid
+          panels={data?.plan.panels ?? []}
+          loading={loading}
+          onAction={onAction}
+        />
       </main>
       <ActivityTimeline />
     </div>
