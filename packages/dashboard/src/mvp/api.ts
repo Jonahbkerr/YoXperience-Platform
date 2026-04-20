@@ -22,11 +22,29 @@ async function del<T>(path: string): Promise<T> {
   return res.json();
 }
 
+export interface Button {
+  label: string;
+  integration: string;
+  action: string;
+  params?: Record<string, unknown>;
+}
+
 export interface Panel {
   type: 'action_card' | 'context_panel' | 'quick_actions';
   priority: number;
   data: Record<string, unknown>;
+  buttons?: Button[];
   rationale: string;
+}
+
+export interface ExecuteResponse {
+  ok: boolean;
+  result?: unknown;
+  error?: string;
+  needsConfirmation?: boolean;
+  integration?: string;
+  action?: string;
+  params?: Record<string, unknown>;
 }
 
 export interface RenderResponse {
@@ -51,4 +69,8 @@ export const api = {
   disable: (name: string) => post<{ ok: true }>(`/integrations/${name}/disable`),
   disconnect: (name: string) => del<{ ok: true }>(`/integrations/${name}`),
   dismissPanel: (id: number) => post<{ ok: true }>(`/panels/${id}/dismiss`),
+  execute: (integration: string, action: string, params: Record<string, unknown> = {}, confirmed = false) =>
+    post<ExecuteResponse>('/execute', { integration, action, params, confirmed }),
+  seedDemo: () => post<{ ok: true; seeded: number }>('/demo/seed'),
+  demoStatus: () => get<{ demoMode: boolean }>('/demo/status'),
 };

@@ -13,10 +13,13 @@ export function integrationsRouter(tokenStore: TokenStore, registry: Integration
 
   r.get('/integrations', (_req, res) => {
     const rawConnected = tokenStore.list();
+    const demoMode = process.env.DEMO_MODE === 'true';
     const googleConnected = rawConnected.includes('gmail');
     const connected: string[] = [];
     for (const name of registry.names()) {
-      if (name === 'gmail' || name === 'calendar') {
+      if (demoMode && (name === 'gmail' || name === 'calendar')) {
+        connected.push(name);
+      } else if (name === 'gmail' || name === 'calendar') {
         if (googleConnected) connected.push(name);
       } else if (rawConnected.includes(name)) {
         connected.push(name);

@@ -8,10 +8,13 @@ import { TokenStore } from './integrations/token-store';
 import { GmailIntegration } from './integrations/gmail';
 import { CalendarIntegration } from './integrations/calendar';
 import { SlackIntegration } from './integrations/slack';
+import { DemoGmailIntegration } from './integrations/demo-gmail';
+import { DemoCalendarIntegration } from './integrations/demo-calendar';
 import { eventsRouter } from './routes/events';
 import { renderRouter } from './routes/render';
 import { integrationsRouter } from './routes/integrations';
 import { telemetryRouter } from './routes/telemetry';
+import { executeRouter } from './routes/execute';
 import { mkdirSync } from 'fs';
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -25,9 +28,18 @@ export function buildMvpApp() {
   const tracker = new EventTracker(db);
   const tokenStore = new TokenStore(db);
   const registry = new IntegrationRegistry();
-  registry.register(new GmailIntegration(tokenStore));
-  registry.register(new CalendarIntegration(tokenStore));
-  registry.register(new SlackIntegration(tokenStore));
+  const demoMode = process.env.DEMO_MODE === 'true';
+  if (demoMode) {
+    registry.register(new DemoGmailIntegration());
+    registry.register(new DemoCalendarIntegration());
+    registry.register(new SlackIntegration(tokenStore));
+    registry.enable('gmail');
+    registry.enable('calendar');
+  } else {
+    registry.register(new GmailIntegration(tokenStore));
+    registry.register(new CalendarIntegration(tokenStore));
+    registry.register(new SlackIntegration(tokenStore));
+  }
 
   for (const name of tokenStore.list()) registry.enable(name);
 
@@ -45,6 +57,7 @@ export function buildMvpApp() {
   app.use('/api', renderRouter({ db, tracker, registry, lm }));
   app.use('/api', integrationsRouter(tokenStore, registry));
   app.use('/api', telemetryRouter(db));
+  app.use('/api', executeRouter(registry, tracker, db));
 
   return app;
 }

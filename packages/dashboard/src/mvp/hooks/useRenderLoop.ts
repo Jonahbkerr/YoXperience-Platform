@@ -1,31 +1,38 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api, RenderResponse } from '../api';
 
-export function useRenderLoop(intervalMs = 7000) {
+export function useRenderLoop(intervalMs = 45000) {
   const [data, setData] = useState<RenderResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const inflight = useRef(false);
+  const cancelledRef = useRef(false);
+
+  async function tick() {
+    if (inflight.current) return;
+    inflight.current = true;
+    setLoading(true);
+    try {
+      const res = await api.render();
+      if (!cancelledRef.current) { setData(res); setError(res.error ?? null); }
+    } catch (e) {
+      if (!cancelledRef.current) setError((e as Error).message);
+    } finally {
+      inflight.current = false;
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    let cancelled = false;
-    let inflight = false;
-
-    async function tick() {
-      if (inflight) return;
-      inflight = true;
-      try {
-        const res = await api.render();
-        if (!cancelled) { setData(res); setError(res.error ?? null); }
-      } catch (e) {
-        if (!cancelled) setError((e as Error).message);
-      } finally {
-        inflight = false;
-      }
-    }
-
+    cancelledRef.current = false;
     tick();
-    const id = setInterval(tick, intervalMs);
-    return () => { cancelled = true; clearInterval(id); };
+    const id = intervalMs > 0 ? setInterval(tick, intervalMs) : null;
+    return () => {
+      cancelledRef.current = true;
+      if (id) clearInterval(id);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [intervalMs]);
 
-  return { data, error };
+  return { data, error, loading, reload: tick };
 }

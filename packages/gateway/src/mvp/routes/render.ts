@@ -4,7 +4,7 @@ import { EventTracker } from '../workflow/tracker';
 import { buildContext } from '../workflow/context';
 import { IntegrationRegistry } from '../integrations/registry';
 import { LMClient } from '../lm-bridge/client';
-import { buildSystemPrompt, buildUserPrompt, RenderPlan } from '../lm-bridge/prompt';
+import { buildSystemPrompt, buildUserPrompt, RenderPlan, AvailableAction } from '../lm-bridge/prompt';
 
 export interface RenderDeps {
   db: DB;
@@ -20,7 +20,16 @@ export function renderRouter(deps: RenderDeps): Router {
     const enabled = deps.registry.enabledNames();
     const context = buildContext({ tracker: deps.tracker, enabledIntegrations: enabled, limit: 5 });
 
-    const sys = buildSystemPrompt(enabled);
+    const available: AvailableAction[] = [];
+    for (const name of enabled) {
+      const tool = deps.registry.get(name);
+      if (!tool) continue;
+      for (const a of tool.listActions()) {
+        available.push({ integration: name, action: a.id, label: a.label, params: a.params });
+      }
+    }
+
+    const sys = buildSystemPrompt(available);
     const user = buildUserPrompt(context);
     const started = Date.now();
 
