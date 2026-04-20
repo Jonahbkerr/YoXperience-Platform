@@ -20,19 +20,21 @@ export class LMClient {
           { role: 'user', content: userPrompt },
         ],
         temperature: this.config.temperature ?? 0.2,
-        response_format: { type: 'json_object' },
       }),
     });
 
     if (!res.ok) {
-      throw new Error(`LM Studio HTTP ${res.status}`);
+      const body = await res.text();
+      throw new Error(`LM Studio HTTP ${res.status}: ${body.slice(0, 200)}`);
     }
 
     const json = await res.json() as { choices: { message: { content: string } }[] };
     const content = json.choices[0]?.message?.content;
     if (!content) throw new Error('LM Studio returned empty content');
 
-    const parsed = JSON.parse(content);
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('LM Studio returned no JSON object');
+    const parsed = JSON.parse(jsonMatch[0]);
     return RenderPlanSchema.parse(parsed);
   }
 }

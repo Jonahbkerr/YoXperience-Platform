@@ -18,7 +18,7 @@ export function renderRouter(deps: RenderDeps): Router {
 
   r.get('/render', async (_req, res) => {
     const enabled = deps.registry.enabledNames();
-    const context = buildContext({ tracker: deps.tracker, enabledIntegrations: enabled });
+    const context = buildContext({ tracker: deps.tracker, enabledIntegrations: enabled, limit: 5 });
 
     const sys = buildSystemPrompt(enabled);
     const user = buildUserPrompt(context);

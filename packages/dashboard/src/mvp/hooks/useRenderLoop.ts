@@ -7,13 +7,18 @@ export function useRenderLoop(intervalMs = 7000) {
 
   useEffect(() => {
     let cancelled = false;
+    let inflight = false;
 
     async function tick() {
+      if (inflight) return;
+      inflight = true;
       try {
         const res = await api.render();
         if (!cancelled) { setData(res); setError(res.error ?? null); }
       } catch (e) {
         if (!cancelled) setError((e as Error).message);
+      } finally {
+        inflight = false;
       }
     }
 

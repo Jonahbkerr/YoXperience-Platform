@@ -6,7 +6,7 @@ import { DynamicPanelGrid } from './DynamicPanelGrid';
 import { ActivityTimeline } from './ActivityTimeline';
 
 export function Dashboard() {
-  const { data, error } = useRenderLoop(7000);
+  const { data, error } = useRenderLoop(45000);
 
   useEffect(() => {
     api.logEvent('session_start');
@@ -20,7 +20,7 @@ export function Dashboard() {
         <header style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
           <b>YoXperience</b>
           <span style={{ color: '#999', marginLeft: 8 }}>
-            {data?.fallback ? 'LM Studio unreachable — fallback' : error ? error : `renders every 7s`}
+            {data?.fallback ? 'LM Studio unreachable — fallback' : error ? error : `renders every 45s`}
           </span>
         </header>
         <DynamicPanelGrid panels={data?.plan.panels ?? []} />
