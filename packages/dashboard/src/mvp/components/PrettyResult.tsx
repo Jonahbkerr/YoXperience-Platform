@@ -16,11 +16,12 @@ export function PrettyResult({ integration, action, state }: Props) {
   const r = state.result as Record<string, unknown> | undefined;
   const box: React.CSSProperties = { marginTop: 6, padding: 10, background: '#f4f6f8', borderRadius: 6, fontSize: 12 };
 
-  if (integration === 'gmail' && action === 'list_unread') {
+  if (integration === 'gmail' && (action === 'list_unread' || action === 'search')) {
     const messages = ((r?.messages as Record<string, unknown>[]) ?? []);
+    const header = action === 'search' ? `🔍 ${messages.length} results` : `📧 ${messages.length} unread`;
     return (
       <div style={box}>
-        <div style={{ fontWeight: 600, marginBottom: 6 }}>📧 {messages.length} unread</div>
+        <div style={{ fontWeight: 600, marginBottom: 6 }}>{header}</div>
         {messages.map((m, i) => (
           <div key={i} style={{ padding: '6px 0', borderBottom: i < messages.length - 1 ? '1px solid #e4e8ec' : 'none' }}>
             <div style={{ fontWeight: 500 }}>{String(m.from ?? '')}</div>

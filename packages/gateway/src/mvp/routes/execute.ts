@@ -3,7 +3,7 @@ import { IntegrationRegistry } from '../integrations/registry';
 import { EventTracker } from '../workflow/tracker';
 import { DB } from '../db';
 
-const WRITE_ACTIONS = new Set(['send_message', 'create_draft', 'create_event']);
+const WRITE_ACTIONS = new Set(['send_message', 'create_draft', 'create_event', 'send_email']);
 
 export function executeRouter(registry: IntegrationRegistry, tracker: EventTracker, db: DB): Router {
   const r = Router();
@@ -33,20 +33,22 @@ export function executeRouter(registry: IntegrationRegistry, tracker: EventTrack
     if (typeof integration !== 'string' || typeof action !== 'string') {
       return res.status(400).json({ error: 'integration and action required' });
     }
+    // Tolerate LM emitting "gmail.list_unread" in the action field — strip the integration prefix
+    const cleanAction = action.startsWith(`${integration}.`) ? action.slice(integration.length + 1) : action;
     const tool = registry.get(integration);
     if (!tool) return res.status(404).json({ error: `unknown integration: ${integration}` });
 
-    if (WRITE_ACTIONS.has(action) && !confirmed) {
-      return res.json({ ok: false, needsConfirmation: true, integration, action, params });
+    if (WRITE_ACTIONS.has(cleanAction) && !confirmed) {
+      return res.json({ ok: false, needsConfirmation: true, integration, action: cleanAction, params });
     }
 
-    tracker.log('execute', { integration, action, params });
+    tracker.log('execute', { integration, action: cleanAction, params });
     try {
-      const result = await tool.execute(action, params ?? {});
-      tracker.log('execute_ok', { integration, action });
+      const result = await tool.execute(cleanAction, params ?? {});
+      tracker.log('execute_ok', { integration, action: cleanAction });
       res.json({ ok: true, result });
     } catch (err) {
-      tracker.log('execute_error', { integration, action, error: (err as Error).message });
+      tracker.log('execute_error', { integration, action: cleanAction, error: (err as Error).message });
       res.status(500).json({ ok: false, error: (err as Error).message });
     }
   });

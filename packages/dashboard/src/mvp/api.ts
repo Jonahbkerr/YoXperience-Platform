@@ -47,11 +47,31 @@ export interface ExecuteResponse {
   params?: Record<string, unknown>;
 }
 
+export interface WorkflowStep {
+  id: string;
+  label: string;
+  integration: string;
+  action: string;
+  params?: Record<string, unknown>;
+  rationale?: string;
+}
+
 export interface RenderResponse {
-  plan: { panels: Panel[] };
+  plan: {
+    panels: Panel[];
+    assistant_message?: string;
+    workflow?: WorkflowStep[];
+  };
   latency_ms?: number;
   error?: string;
   fallback?: boolean;
+}
+
+export interface ChatMessage {
+  timestamp: number;
+  role: 'user' | 'assistant';
+  text: string;
+  source?: string;
 }
 
 export interface IntegrationsResponse {
@@ -73,4 +93,7 @@ export const api = {
     post<ExecuteResponse>('/execute', { integration, action, params, confirmed }),
   seedDemo: () => post<{ ok: true; seeded: number }>('/demo/seed'),
   demoStatus: () => get<{ demoMode: boolean }>('/demo/status'),
+  sendChat: (text: string, source: 'text' | 'voice' = 'text') =>
+    post<{ ok: true }>('/chat', { text, source }),
+  chatHistory: () => get<{ messages: ChatMessage[] }>('/chat'),
 };

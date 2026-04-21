@@ -66,7 +66,7 @@ export function PanelButtons({ buttons, onAction }: { buttons?: Button[]; onActi
               {state?.running ? 'running...' : b.label}
             </button>
             <span style={{ fontSize: 10, color: '#aaa' }}>
-              {b.integration}.{b.action}
+              {b.action.startsWith(b.integration + '.') ? b.action : `${b.integration}.${b.action}`}
             </span>
 
             {state?.pendingConfirm && (

@@ -7,8 +7,10 @@ describe('prompt', () => {
       { integration: 'gmail', action: 'list_unread', label: 'List unread', params: [] },
       { integration: 'calendar', action: 'list_upcoming', label: 'Upcoming events', params: [] },
     ]);
-    expect(sys).toContain('gmail.list_unread');
-    expect(sys).toContain('calendar.list_upcoming');
+    expect(sys).toContain('"gmail"');
+    expect(sys).toContain('"list_unread"');
+    expect(sys).toContain('"calendar"');
+    expect(sys).toContain('"list_upcoming"');
     expect(sys).toContain('JSON');
   });
 
@@ -23,6 +25,21 @@ describe('prompt', () => {
   });
 
   it('rejects invalid render plan', () => {
-    expect(() => RenderPlanSchema.parse({ foo: 'bar' })).toThrow();
+    // Invalid panel type
+    expect(() => RenderPlanSchema.parse({
+      panels: [{ type: 'bad_type', priority: 1, data: {}, rationale: '' }],
+    })).toThrow();
+  });
+
+  it('accepts a workflow-shaped plan', () => {
+    const plan = {
+      assistant_message: '2-step workflow',
+      panels: [],
+      workflow: [
+        { id: 's1', label: 'Check mail', integration: 'gmail', action: 'list_unread' },
+        { id: 's2', label: 'Post update', integration: 'slack', action: 'send_message', params: { channel: '#general', text: 'hi' } },
+      ],
+    };
+    expect(() => RenderPlanSchema.parse(plan)).not.toThrow();
   });
 });

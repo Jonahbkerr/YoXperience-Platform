@@ -33,6 +33,11 @@ export class GmailIntegration implements Integration {
         { name: 'subject', type: 'string', required: true },
         { name: 'body', type: 'string', required: true },
       ]},
+      { id: 'send_email', label: 'Send email', params: [
+        { name: 'to', type: 'string', required: true },
+        { name: 'subject', type: 'string', required: true },
+        { name: 'body', type: 'string', required: true },
+      ]},
     ];
   }
 
@@ -40,17 +45,13 @@ export class GmailIntegration implements Integration {
     const gmail = this.getClient();
     switch (actionId) {
       case 'list_unread': {
-        const res = await gmail.users.messages.list({
-          userId: 'me',
-          q: 'is:unread',
-          maxResults: 10,
-        });
-        return res.data;
+        const list = await gmail.users.messages.list({ userId: 'me', q: 'is:unread', maxResults: 10 });
+        return { messages: await this.enrichMessages(gmail, list.data.messages ?? []) };
       }
       case 'search': {
         const q = params.q as string;
-        const res = await gmail.users.messages.list({ userId: 'me', q, maxResults: 10 });
-        return res.data;
+        const list = await gmail.users.messages.list({ userId: 'me', q, maxResults: 10 });
+        return { messages: await this.enrichMessages(gmail, list.data.messages ?? []) };
       }
       case 'create_draft': {
         const raw = Buffer.from(
@@ -62,8 +63,46 @@ export class GmailIntegration implements Integration {
         });
         return res.data;
       }
+      case 'send_email': {
+        const raw = Buffer.from(
+          `To: ${params.to}\r\nSubject: ${params.subject}\r\n\r\n${params.body}`
+        ).toString('base64url');
+        const res = await gmail.users.messages.send({
+          userId: 'me',
+          requestBody: { raw },
+        });
+        return { id: res.data.id, to: params.to, subject: params.subject, status: 'sent' };
+      }
       default:
         throw new Error(`Unknown Gmail action: ${actionId}`);
     }
+  }
+
+  private async enrichMessages(gmail: gmail_v1.Gmail, refs: gmail_v1.Schema$Message[]): Promise<unknown[]> {
+    const out = await Promise.all(refs.map(async (ref) => {
+      if (!ref.id) return null;
+      const full = await gmail.users.messages.get({
+        userId: 'me',
+        id: ref.id,
+        format: 'metadata',
+        metadataHeaders: ['From', 'Subject', 'Date'],
+      });
+      const headers = full.data.payload?.headers ?? [];
+      const h = (name: string) => headers.find(x => x.name?.toLowerCase() === name.toLowerCase())?.value ?? '';
+      const dateStr = h('Date');
+      const d = dateStr ? new Date(dateStr) : null;
+      const time = d && !isNaN(d.getTime())
+        ? d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+        : '';
+      return {
+        id: ref.id,
+        from: h('From'),
+        subject: h('Subject') || '(no subject)',
+        snippet: full.data.snippet ?? '',
+        time,
+        unread: (full.data.labelIds ?? []).includes('UNREAD'),
+      };
+    }));
+    return out.filter(Boolean);
   }
 }

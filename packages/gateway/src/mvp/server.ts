@@ -15,6 +15,7 @@ import { renderRouter } from './routes/render';
 import { integrationsRouter } from './routes/integrations';
 import { telemetryRouter } from './routes/telemetry';
 import { executeRouter } from './routes/execute';
+import { chatRouter } from './routes/chat';
 import { mkdirSync } from 'fs';
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -58,6 +59,7 @@ export function buildMvpApp() {
   app.use('/api', integrationsRouter(tokenStore, registry));
   app.use('/api', telemetryRouter(db));
   app.use('/api', executeRouter(registry, tracker, db));
+  app.use('/api', chatRouter(tracker));
 
   return app;
 }

@@ -59,7 +59,8 @@ export function integrationsRouter(tokenStore: TokenStore, registry: Integration
     const { tokens } = await client.getToken(code);
     tokenStore.save('gmail', tokens as Record<string, unknown>);
     registry.enable('gmail');
-    res.redirect('/mvp');
+    registry.enable('calendar');
+    res.redirect(process.env.FRONTEND_URL || 'http://localhost:5174/dashboard/mvp');
   });
 
   r.delete('/integrations/:name', (req, res) => {
@@ -91,7 +92,7 @@ export function integrationsRouter(tokenStore: TokenStore, registry: Integration
     if (!json.ok) return res.status(400).json(json);
     tokenStore.save('slack', json as unknown as Record<string, unknown>);
     registry.enable('slack');
-    res.redirect('/mvp');
+    res.redirect(process.env.FRONTEND_URL || 'http://localhost:5174/dashboard/mvp');
   });
 
   return r;

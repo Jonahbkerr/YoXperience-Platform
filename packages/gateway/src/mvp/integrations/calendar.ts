@@ -38,7 +38,20 @@ export class CalendarIntegration implements Integration {
           singleEvents: true,
           orderBy: 'startTime',
         });
-        return res.data;
+        const fmt = (s?: string | null) => {
+          if (!s) return '';
+          const d = new Date(s);
+          return isNaN(d.getTime()) ? s : d.toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+        };
+        const events = (res.data.items ?? []).map(e => ({
+          id: e.id,
+          title: e.summary ?? '(no title)',
+          start: fmt(e.start?.dateTime ?? e.start?.date),
+          end: fmt(e.end?.dateTime ?? e.end?.date),
+          link: e.hangoutLink ?? e.htmlLink ?? '',
+          attendees: (e.attendees ?? []).map(a => a.email).filter(Boolean),
+        }));
+        return { events };
       }
       case 'create_event': {
         const res = await cal.events.insert({
