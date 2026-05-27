@@ -1,5 +1,6 @@
 import React from 'react';
 import { Routes, Route, Link } from 'react-router-dom';
+import { track } from '@vercel/analytics';
 
 const Logo = () => (
   <svg width="40" height="40" viewBox="0 0 465 472" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -33,7 +34,7 @@ function LandingPage() {
         </p>
 
         <button 
-          onClick={() => window.location.href = 'https://app.yoxperience.com/dashboard/'}
+          onClick={() => { track("LandingCTA", { action: "signin_dashboard", source: "hero" }); window.location.href = 'https://app.yoxperience.com/dashboard/'; }}
           style={{
             padding: 'var(--yc-space-3) var(--yc-space-8)', backgroundColor: 'var(--yc-color-primary)', color: '#ffffff', border: 'none',
             borderRadius: 'var(--yc-radius-md)', fontSize: 'var(--yc-font-size-lg)', fontWeight: 'var(--yc-font-weight-semibold)', cursor: 'pointer', boxShadow: 'var(--yc-shadow-sm)', transition: 'background-color 0.2s ease'
@@ -131,7 +132,7 @@ function LandingPage() {
               <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>✓ Basic analytics</li>
               <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>✓ Community support</li>
             </ul>
-            <button style={{ width: '100%', padding: 'var(--yc-space-3)', backgroundColor: '#fff', color: '#000', border: '1px solid #000', borderRadius: 'var(--yc-radius-md)', fontWeight: 'bold', cursor: 'pointer' }}>Get Started</button>
+            <button style={{ width: '100%', padding: 'var(--yc-space-3)', backgroundColor: '#fff', color: '#000', border: '1px solid #000', borderRadius: 'var(--yc-radius-md)', fontWeight: 'bold', cursor: 'pointer' }} onClick={() => track("LandingCTA", { action: "get_started", tier: "hobby" })}>Get Started</button>
           </div>
 
           {/* Pro Tier */}
@@ -145,7 +146,7 @@ function LandingPage() {
               <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>✓ Advanced LLM predictions</li>
               <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>✓ Priority support</li>
             </ul>
-            <button style={{ width: '100%', padding: 'var(--yc-space-3)', backgroundColor: 'var(--yc-color-primary)', color: '#fff', border: 'none', borderRadius: 'var(--yc-radius-md)', fontWeight: 'bold', cursor: 'pointer' }}>Start Free Trial</button>
+            <button style={{ width: '100%', padding: 'var(--yc-space-3)', backgroundColor: 'var(--yc-color-primary)', color: '#fff', border: 'none', borderRadius: 'var(--yc-radius-md)', fontWeight: 'bold', cursor: 'pointer' }} onClick={() => track("LandingCTA", { action: "start_trial", tier: "pro" })}>Start Free Trial</button>
           </div>
         </div>
       </section>
@@ -341,7 +342,7 @@ export function App() {
           <a href="/#features" style={{ color: 'var(--yc-color-text-secondary)', textDecoration: 'none', fontWeight: 'var(--yc-font-weight-medium)' }}>Features</a>
           <a href="/#pricing" style={{ color: 'var(--yc-color-text-secondary)', textDecoration: 'none', fontWeight: 'var(--yc-font-weight-medium)' }}>Pricing</a>
           <Link to="/docs" style={{ color: 'var(--yc-color-text-secondary)', textDecoration: 'none', fontWeight: 'var(--yc-font-weight-medium)' }}>Docs</Link>
-          <a href="https://app.yoxperience.com/dashboard/" style={{
+          <a href="https://app.yoxperience.com/dashboard/" onClick={() => track("LandingCTA", { action: "signin", source: "header" })} style={{
             backgroundColor: 'var(--yc-color-primary)',
             padding: '8px 16px',
             borderRadius: '6px',
