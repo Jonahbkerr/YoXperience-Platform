@@ -1,0 +1,22 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "name": "yoxperience-platform",
+  "buildCommand": "npm run build:landing && npm run build:dashboard",
+  "outputDirectory": "packages/landing/dist",
+  "installCommand": "npm install",
+  "rewrites": [
+    { "source": "/dashboard/(.*)", "destination": "/dashboard/$1" },
+    { "source": "/api/(.*)", "destination": "https://yo-xperience-api.vercel.app/api/$1" },
+    { "source": "/(.*)", "destination": "/$1" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+      ]
+    }
+  ]
+}

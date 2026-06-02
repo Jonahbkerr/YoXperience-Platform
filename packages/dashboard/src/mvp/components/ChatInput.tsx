@@ -28,7 +28,7 @@ export function ChatInput({ onSend, disabled }: Props) {
   const [listening, setListening] = useState(false);
   const [micError, setMicError] = useState<string | null>(null);
   const [supported, setSupported] = useState(false);
-  const recogRef = useRef<ReturnType<SRCtor> | null>(null);
+  const recogRef = useRef<any>(null);
   const finalTextRef = useRef<string>('');
   const sentRef = useRef<boolean>(false);
 

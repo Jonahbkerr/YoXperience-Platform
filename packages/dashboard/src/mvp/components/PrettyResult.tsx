@@ -43,7 +43,7 @@ export function PrettyResult({ integration, action, state }: Props) {
           <div key={i} style={{ padding: '6px 0', borderBottom: i < events.length - 1 ? '1px solid #e4e8ec' : 'none' }}>
             <div style={{ fontWeight: 500 }}>{String(e.title ?? '')}</div>
             <div style={{ color: '#666', fontSize: 11 }}>{String(e.start ?? '')} – {String(e.end ?? '')}</div>
-            {e.link && <div style={{ color: '#4a80d0', fontSize: 11 }}>{String(e.link)}</div>}
+            {String(e.link ?? '') && <div style={{ color: '#4a80d0', fontSize: 11 }}>{String(e.link)}</div>}
           </div>
         ))}
       </div>
