@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext.js";
+import { track } from "@vercel/analytics";
 
 export default function SignUp() {
   const { signup } = useAuth();
@@ -17,6 +18,7 @@ export default function SignUp() {
     setLoading(true);
     try {
       await signup({ email, password, name, orgName });
+      track("Signup", { method: "email" });
     } catch (err) {
       setError((err as Error).message);
     } finally {

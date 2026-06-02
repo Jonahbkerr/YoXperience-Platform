@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext.js";
+import { track } from "@vercel/analytics";
 
 export default function SignIn() {
   const { login } = useAuth();
@@ -15,6 +16,7 @@ export default function SignIn() {
     setLoading(true);
     try {
       await login(email, password);
+      track("SignIn", { method: "email" });
     } catch (err) {
       setError((err as Error).message);
     } finally {

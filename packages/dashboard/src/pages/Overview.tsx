@@ -3,6 +3,7 @@ import { useNavigate, useOutletContext } from "react-router-dom";
 import { Check, Copy, X } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext.js";
 import { api } from "../lib/api-client.js";
+import { track } from "@vercel/analytics";
 
 interface LayoutContext {
   selectedProject: { id: string; name: string; slug: string } | null;
@@ -50,6 +51,10 @@ export default function Overview() {
   const [copiedInstall, setCopiedInstall] = useState(false);
   const [hasKeys, setHasKeys] = useState(false);
   const [hasSlots, setHasSlots] = useState(false);
+
+  useEffect(() => {
+    track("DashboardView", { page: "overview" });
+  }, []);
 
   useEffect(() => {
     if (!selectedProject) return;

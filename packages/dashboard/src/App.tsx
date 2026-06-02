@@ -10,10 +10,12 @@ import Slots from "./pages/Slots.js";
 import Analytics from "./pages/Analytics.js";
 import TeamMembers from "./pages/TeamMembers.js";
 import OrgSettings from "./pages/Settings.js";
+import MVPApp from "./mvp/MVPApp.js";
 
 export default function App() {
   return (
     <Routes>
+      <Route path="/mvp/*" element={<MVPApp />} />
       <Route
         path="/signin"
         element={
