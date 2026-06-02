@@ -14,6 +14,8 @@ import { errorHandler } from "./middleware/error-handler.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+const START_TIME = Date.now();
+
 export function createApp() {
   const app = express();
 
@@ -82,6 +84,33 @@ export function createApp() {
       });
     } catch (err: any) {
       res.json({ status: "ok", service: "yoxperience-gateway", dbError: err.message });
+    }
+  });
+
+  // Public metrics endpoint (used by fleet health monitoring)
+  app.get("/api/metrics", async (_req, res) => {
+    try {
+      const { pool } = await import("./db/client.js");
+      const eventsRes = await pool.query("SELECT count(*)::int as count FROM telemetry_events");
+      const slotsRes = await pool.query("SELECT count(*)::int as count FROM slot_definitions");
+      const keysRes = await pool.query("SELECT count(*)::int as count FROM api_keys");
+      const projectsRes = await pool.query("SELECT count(*)::int as count FROM projects");
+      res.json({
+        service: "yoxperience-gateway",
+        status: "ok",
+        uptime_seconds: Math.floor((Date.now() - START_TIME) / 1000),
+        projects: projectsRes.rows[0].count,
+        api_keys: keysRes.rows[0].count,
+        slot_definitions: slotsRes.rows[0].count,
+        telemetry_events: eventsRes.rows[0].count,
+      });
+    } catch (err: any) {
+      res.json({
+        service: "yoxperience-gateway",
+        status: "degraded",
+        uptime_seconds: Math.floor((Date.now() - START_TIME) / 1000),
+        db_error: err.message,
+      });
     }
   });
 
