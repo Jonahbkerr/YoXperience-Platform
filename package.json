@@ -16,10 +16,13 @@
     "build:dashboard": "npm -w @yoxperience/dashboard run build",
     "build": "npm run build:landing && npm run build:dashboard",
     "start": "NODE_ENV=production node --import tsx packages/gateway/src/index.ts",
+    "test": "npm -w @yoxperience/gateway run test && npm -w @yoxperience/sdk run test && npm -w @yoxperience/landing run test && npm -w @yoxperience/dashboard run test",
     "setup": "npm install && npm run gateway:migrate"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "concurrently": "^9.1.0",
+    "playwright": "^1.61.1",
     "typescript": "^5.7.0"
   }
 }
