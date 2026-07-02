@@ -6,3 +6,16 @@ dist/
 .env
 .DS_Store
 .vercel
+
+# local debug/scratch scripts (contain local paths / DB creds)
+packages/gateway/_*
+packages/gateway/check-db.ts
+packages/gateway/query-db.ts
+packages/gateway/query-results.ts
+packages/gateway/query_telemetry.ts
+packages/gateway/run-query.sh
+packages/gateway/run-telemetry.ts
+packages/gateway/src/worker/_*.ts
+packages/gateway/src/worker/query2.ts
+packages/gateway/src/worker/query_telemetry.ts
+test-results/
