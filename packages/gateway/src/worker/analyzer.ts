@@ -5,6 +5,7 @@ import {
   endUserPreferences,
   slotDefinitions,
 } from "../db/schema.js";
+import { analyzeAndStoreRecommendations } from "../services/llm-analyzer.js";
 
 const EVENT_WEIGHTS: Record<string, number> = {
   impression: 0.0,
@@ -15,6 +16,13 @@ const EVENT_WEIGHTS: Record<string, number> = {
 };
 
 const ALPHA = 0.3;
+
+// LLM config — falls back gracefully if LM Studio is unreachable
+const LLM_CONFIG = {
+  url: process.env.LM_STUDIO_URL || "http://localhost:1234/v1",
+  model: process.env.LM_MODEL || "local-model",
+  temperature: 0.3,
+};
 
 interface AnalysisResult {
   processedCount: number;
@@ -140,7 +148,19 @@ export async function runAnalysis(): Promise<AnalysisResult> {
     updatedPreferences++;
   }
 
-  // 5. Mark events as processed
+  // 5. LLM deep analysis — if enough data and LM is available, get AI-powered recommendations
+  try {
+    const uniqueUsers = [...new Set(unprocessed.map(e => `${e.projectId}::${e.endUserId}`))];
+    for (const userKey of uniqueUsers) {
+      const [projectId, endUserId] = userKey.split("::");
+      await analyzeAndStoreRecommendations(projectId, endUserId, LLM_CONFIG);
+    }
+  } catch (err) {
+    // LM might be unreachable — that's fine, EMA already did the job
+    console.warn("[analyzer] LLM analysis unavailable, using EMA only:", (err as Error).message);
+  }
+
+  // 6. Mark events as processed
   const now = new Date();
   const ids = unprocessed.map((e) => e.id);
   for (const id of ids) {

@@ -122,6 +122,7 @@ export const endUserPreferences = pgTable("end_user_preferences", {
   slotKey: text("slot_key").notNull(),
   variantWeights: text("variant_weights").notNull(), // JSON object
   resolvedVariant: text("resolved_variant").notNull(),
+  rationale: text("rationale"), // LLM explanation for this recommendation
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

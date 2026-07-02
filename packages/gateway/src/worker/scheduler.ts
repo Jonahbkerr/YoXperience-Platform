@@ -1,37 +1,219 @@
-import { runAnalysis } from "./analyzer.js";
+/**
+ * YoXperience Scheduler
+ * 
+ * Runs periodically to process accumulated telemetry and generate
+ * LLM-powered recommendations.
+ * 
+ * startWorker(): called by index.ts — polls every 30 seconds
+ * main(): standalone entry point for cron jobs
+ * 
+ * Options:
+ *   ANALYSIS_INTERVAL_MIN=30   Process telemetry from last N minutes
+ *   LM_STUDIO_URL              URL to LM Studio instance
+ *   LM_MODEL                   Model name to use
+ */
 
-let intervalId: ReturnType<typeof setInterval> | null = null;
+import { db } from "../db/client.js";
+import { analyzeWithLLM, summarizeTelemetry, type TelemetrySummary, type LLMRecommendation } from "../services/llm-analyzer.js";
+import { telemetryEvents, endUserPreferences, slotDefinitions } from "../db/schema.js";
+import { eq, and, gte, isNull } from "drizzle-orm";
 
-export function startWorker(intervalMs = 10_000) {
-  if (intervalId) return;
+const INTERVAL_MIN = parseInt(process.env.ANALYSIS_INTERVAL_MIN || "30", 10);
+const LLM_ENABLED = process.env.LLM_ENABLED !== "false";
+const LM_STUDIO_URL = process.env.LM_STUDIO_URL || "http://localhost:1234/v1";
+const LM_MODEL = process.env.LM_MODEL || "gemma-4-26b-a4b-it-uncensored-abliterix-mlx-int5-affine";
 
-  console.log(
-    `[worker] analyzer started, running every ${intervalMs / 1000}s`
-  );
+const EVENT_WEIGHTS: Record<string, number> = {
+  impression: 0.0, hover: 0.1, scroll: 0.15, click: 0.5, dismiss: -0.3,
+};
+const ALPHA = 0.3;
 
-  // Run immediately once
-  runAnalysis().catch((err) =>
-    console.error("[worker] analyzer error:", err.message)
-  );
+async function main() {
+  console.log(`\n═══ YoXperience Scheduler ═══`);
+  console.log(`Time: ${new Date().toISOString()}`);
+  console.log(`Interval: ${INTERVAL_MIN} minutes`);
+  console.log(`LLM: ${LLM_ENABLED ? "enabled" : "disabled"}`);
+  if (LLM_ENABLED) console.log(`Model: ${LM_MODEL}`);
 
-  intervalId = setInterval(async () => {
-    try {
-      const result = await runAnalysis();
-      if (result.processedCount > 0) {
-        console.log(
-          `[worker] processed ${result.processedCount} events, updated ${result.updatedPreferences} preferences`
-        );
-      }
-    } catch (err: any) {
-      console.error("[worker] analyzer error:", err.message);
+  const since = new Date(Date.now() - INTERVAL_MIN * 60 * 1000);
+
+  // 1. Fetch unprocessed telemetry from the interval
+  const unprocessed = await db
+    .select()
+    .from(telemetryEvents)
+    .where(
+      and(
+        isNull(telemetryEvents.processedAt),
+        gte(telemetryEvents.createdAt, since)
+      )
+    )
+    .limit(1000);
+
+  console.log(`\n📊 Unprocessed events: ${unprocessed.length}`);
+
+  if (unprocessed.length === 0) {
+    console.log("Nothing to process.");
+    return; // Don't exit — just return when called from worker
+  }
+
+  // 2. Group by (projectId, endUserId, slotKey)
+  const groups = new Map<string, typeof unprocessed>();
+  for (const evt of unprocessed) {
+    const key = `${evt.projectId}::${evt.endUserId}::${evt.slotKey}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(evt);
+  }
+
+  // 3. Load slot definitions
+  const projectIds = [...new Set(unprocessed.map((e) => e.projectId))];
+  const allSlots = [];
+  for (const pid of projectIds) {
+    const slots = await db.select().from(slotDefinitions).where(eq(slotDefinitions.projectId, pid));
+    allSlots.push(...slots);
+  }
+  const slotMap = new Map(allSlots.map((s) => [`${s.projectId}::${s.slotKey}`, s]));
+
+  let updatedPrefs = 0;
+
+  // 4. EMA processing per group
+  for (const [key, events] of groups) {
+    const [projectId, endUserId, slotKey] = key.split("::");
+    const slotDef = slotMap.get(`${projectId}::${slotKey}`);
+    if (!slotDef) continue;
+
+    const allVariants: string[] = JSON.parse(slotDef.variants);
+    const deltas: Record<string, number> = {};
+    for (const evt of events) {
+      deltas[evt.variant] = (deltas[evt.variant] ?? 0) + (EVENT_WEIGHTS[evt.eventType] ?? 0);
     }
-  }, intervalMs);
+
+    const [existing] = await db
+      .select()
+      .from(endUserPreferences)
+      .where(and(eq(endUserPreferences.projectId, projectId), eq(endUserPreferences.endUserId, endUserId), eq(endUserPreferences.slotKey, slotKey)))
+      .limit(1);
+
+    let currentWeights: Record<string, number> = {};
+    if (existing) {
+      currentWeights = JSON.parse(existing.variantWeights);
+    } else {
+      allVariants.forEach((v) => (currentWeights[v] = 1.0 / allVariants.length));
+    }
+
+    for (const variant of allVariants) {
+      const delta = deltas[variant] ?? 0;
+      currentWeights[variant] = Math.max(0, (currentWeights[variant] ?? 0) + ALPHA * delta);
+    }
+
+    const total = Object.values(currentWeights).reduce((a, b) => a + b, 0);
+    if (total > 0) {
+      for (const v of allVariants) currentWeights[v] = (currentWeights[v] ?? 0) / total;
+    }
+
+    const resolvedVariant = allVariants.reduce((best, v) => (currentWeights[v] ?? 0) > (currentWeights[best] ?? 0) ? v : best);
+
+    if (existing) {
+      await db.update(endUserPreferences).set({ variantWeights: JSON.stringify(currentWeights), resolvedVariant }).where(eq(endUserPreferences.id, existing.id));
+    } else {
+      await db.insert(endUserPreferences).values({ projectId, endUserId, slotKey, variantWeights: JSON.stringify(currentWeights), resolvedVariant });
+    }
+    updatedPrefs++;
+  }
+
+  console.log(`📈 EMA updated ${updatedPrefs} preference(s)`);
+
+  // 5. LLM deep analysis (if enabled)
+  if (LLM_ENABLED) {
+    const uniqueUsers = [...new Set(unprocessed.map((e) => `${e.projectId}::${e.endUserId}`))];
+    console.log(`🧠 Running LLM analysis for ${uniqueUsers.length} user(s)...`);
+
+    for (const userKey of uniqueUsers) {
+      const [projectId, endUserId] = userKey.split("::");
+      try {
+        const slots = await db.select().from(slotDefinitions).where(eq(slotDefinitions.projectId, projectId));
+        const summaries: TelemetrySummary[] = [];
+        for (const slot of slots) {
+          const summary = await summarizeTelemetry(projectId, endUserId, slot.slotKey);
+          if (summary && summary.totalEvents > 0) summaries.push(summary);
+        }
+
+        if (summaries.length === 0) continue;
+
+        const recommendations = await analyzeWithLLM(summaries, {
+          url: LM_STUDIO_URL,
+          model: LM_MODEL,
+          temperature: 0.2,
+        });
+
+        for (const rec of recommendations) {
+          // Normalize common LLM field name variations and typos
+          if (!rec.slotKey || !rec.recommendedVariant) {
+            if ((rec as any)["slot-key"]) rec.slotKey = (rec as any)["slot-key"];
+            else if ((rec as any)["slot_key"]) rec.slotKey = (rec as any)["slot_key"];
+            else {
+              const keys = Object.keys(rec as any);
+              const match = keys.find(k => /slot.*key/i.test(k));
+              if (match) rec.slotKey = (rec as any)[match];
+            }
+            if (!rec.slotKey) continue;
+          }
+
+          const variantWeights: Record<string, number> = {};
+          variantWeights[rec.recommendedVariant] = rec.confidence / 100;
+          for (const alt of rec.alternativeVariants || []) {
+            variantWeights[alt.variant] = (100 - rec.confidence) / 100 / (rec.alternativeVariants?.length || 1);
+          }
+
+          const [existingPref] = await db
+            .select().from(endUserPreferences)
+            .where(and(eq(endUserPreferences.projectId, projectId), eq(endUserPreferences.endUserId, endUserId), eq(endUserPreferences.slotKey, rec.slotKey)))
+            .limit(1);
+
+          if (existingPref) {
+            await db.update(endUserPreferences).set({ variantWeights: JSON.stringify(variantWeights), resolvedVariant: rec.recommendedVariant, rationale: rec.rationale || null }).where(eq(endUserPreferences.id, existingPref.id));
+          }
+          // If no existing preference, skip — EMA should have created one already
+        }
+
+        console.log(`  ✅ ${endUserId}: ${recommendations.length} LLM recommendation(s)`);
+      } catch (err) {
+        console.warn(`  ⚠️ ${endUserId}: LLM unavailable — ${(err as Error).message}`);
+      }
+    }
+  }
+
+  // 6. Mark events as processed
+  const now = new Date();
+  let marked = 0;
+  for (const evt of unprocessed) {
+    await db.update(telemetryEvents).set({ processedAt: now }).where(eq(telemetryEvents.id, evt.id));
+    marked++;
+  }
+  console.log(`✓ Marked ${marked} events as processed\n`);
 }
 
-export function stopWorker() {
-  if (intervalId) {
-    clearInterval(intervalId);
-    intervalId = null;
-    console.log("[worker] analyzer stopped");
-  }
+// startWorker is called by index.ts — polls every 30 seconds
+export function startWorker() {
+  console.log("[scheduler] Worker started — polling every 30s");
+  const poll = () => {
+    runOnce().catch((err) => console.warn("[scheduler] Poll failed:", err.message));
+  };
+  poll(); // Run immediately
+  setInterval(poll, 30000);
+}
+
+// Standalone entry point for cron jobs
+async function runOnce() {
+  await main();
+}
+
+// Only auto-run if called directly (not imported)
+const isDirectRun = process.argv[1]?.includes("scheduler");
+if (isDirectRun) {
+  main()
+    .then(() => process.exit(0))
+    .catch((err) => {
+      console.error("Scheduler failed:", err);
+      process.exit(1);
+    });
 }

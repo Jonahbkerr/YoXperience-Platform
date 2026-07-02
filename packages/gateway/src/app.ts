@@ -10,6 +10,7 @@ import apiKeysRouter from "./routes/api-keys.js";
 import slotsRouter from "./routes/slots.js";
 import analyticsRouter from "./routes/analytics.js";
 import sdkRouter from "./routes/sdk.js";
+import analyzeRouter from "./routes/analyze.js";
 import { errorHandler } from "./middleware/error-handler.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -27,15 +28,12 @@ export function createApp() {
   app.use(
     cors({
       origin: (origin, callback) => {
-        // Allow requests with no origin (server-to-server, curl, etc.)
         if (!origin) return callback(null, true);
-        // Allow configured origins
         if (corsOrigins.includes(origin)) return callback(null, true);
-        // Allow any origin for SDK endpoints (/v1/*)
-        // SDK uses API key auth, not cookies — CORS is safe
         callback(null, true);
       },
       credentials: true,
+      allowedHeaders: ["Content-Type", "Authorization", "x-api-key"],
     })
   );
   app.use(express.json());
@@ -51,6 +49,7 @@ export function createApp() {
 
   // SDK routes (API key auth, not JWT)
   app.use("/v1", sdkRouter);
+  app.use("/v1", analyzeRouter);
 
   // Health check + debug
   app.get("/health", async (_req, res) => {
