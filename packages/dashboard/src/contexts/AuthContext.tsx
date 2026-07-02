@@ -63,6 +63,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async function tryRefresh() {
       try {
         const currentToken = getAccessToken();
+        // Skip refresh if there's no stored token and no reason to expect a session
+        if (!currentToken) {
+          if (!cancelled) {
+            setState({ user: null, org: null, role: null, loading: false });
+          }
+          return;
+        }
         const res = await api<{ accessToken: string }>("/auth/refresh", {
           method: "POST",
           body: JSON.stringify({ accessToken: currentToken ?? "" }),
