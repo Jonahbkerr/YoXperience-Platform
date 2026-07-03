@@ -14,6 +14,7 @@
  */
 
 import { db } from "../db/client.js";
+import { describeError } from "../lib/errors.js";
 import { analyzeWithLLM, summarizeTelemetry, type TelemetrySummary, type LLMRecommendation } from "../services/llm-analyzer.js";
 import { telemetryEvents, endUserPreferences, slotDefinitions } from "../db/schema.js";
 import { eq, and, gte, isNull } from "drizzle-orm";
@@ -177,7 +178,7 @@ async function main() {
 
         console.log(`  ✅ ${endUserId}: ${recommendations.length} LLM recommendation(s)`);
       } catch (err) {
-        console.warn(`  ⚠️ ${endUserId}: LLM unavailable — ${(err as Error).message}`);
+        console.warn(`  ⚠️ ${endUserId}: LLM unavailable — ${describeError(err)}`);
       }
     }
   }
@@ -196,7 +197,7 @@ async function main() {
 export function startWorker() {
   console.log("[scheduler] Worker started — polling every 30s");
   const poll = () => {
-    runOnce().catch((err) => console.warn("[scheduler] Poll failed:", err.message));
+    runOnce().catch((err) => console.warn("[scheduler] Poll failed:", describeError(err)));
   };
   poll(); // Run immediately
   setInterval(poll, 30000);

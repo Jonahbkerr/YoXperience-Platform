@@ -11,6 +11,29 @@ interface AnalyticsData {
   slotWinners: Record<string, { variant: string; confidence: number }>;
 }
 
+interface InsightsData {
+  totals: {
+    analyzedUsers: number;
+    totalRecommendations: number;
+    llmRecommendations: number;
+  };
+  slots: Array<{
+    slotKey: string;
+    resolvedVariant: string;
+    users: number;
+    lastUpdated: string;
+    withRationale: number;
+  }>;
+  recommendations: Array<{
+    endUserId: string;
+    slotKey: string;
+    resolvedVariant: string;
+    variantWeights: Record<string, number> | null;
+    rationale: string | null;
+    updatedAt: string;
+  }>;
+}
+
 interface LayoutContext {
   selectedProject: { id: string; name: string } | null;
 }
@@ -25,6 +48,7 @@ const cardStyle: React.CSSProperties = {
 export default function Analytics() {
   const { selectedProject } = useOutletContext<LayoutContext>();
   const [data, setData] = useState<AnalyticsData | null>(null);
+  const [insights, setInsights] = useState<InsightsData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -33,10 +57,10 @@ export default function Analytics() {
       return;
     }
     setLoading(true);
-    api<AnalyticsData>(`/api/projects/${selectedProject.id}/analytics`)
-      .then(setData)
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    Promise.allSettled([
+      api<AnalyticsData>(`/api/projects/${selectedProject.id}/analytics`).then(setData),
+      api<InsightsData>(`/api/projects/${selectedProject.id}/analytics/insights`).then(setInsights),
+    ]).finally(() => setLoading(false));
   }, [selectedProject?.id]);
 
   if (!selectedProject) {
@@ -366,6 +390,164 @@ export default function Analytics() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* AI Insights — LLM behavior analysis reports */}
+      {insights && insights.totals.totalRecommendations > 0 && (
+        <div style={{ ...cardStyle, marginTop: "var(--yc-space-4)" }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "baseline",
+              marginBottom: "var(--yc-space-4)",
+            }}
+          >
+            <h3
+              style={{
+                fontSize: "var(--yc-font-size-md)",
+                fontWeight: "var(--yc-font-weight-semibold)",
+              }}
+            >
+              AI Insights
+            </h3>
+            <span
+              style={{
+                fontSize: "var(--yc-font-size-xs)",
+                color: "var(--yc-color-text-tertiary)",
+              }}
+            >
+              {insights.totals.analyzedUsers.toLocaleString()} users analyzed &middot;{" "}
+              {insights.totals.llmRecommendations.toLocaleString()} AI recommendations
+            </span>
+          </div>
+
+          {/* Per-slot variant distribution */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+              gap: "var(--yc-space-3)",
+              marginBottom: "var(--yc-space-5)",
+            }}
+          >
+            {insights.slots.map((s) => (
+              <div
+                key={`${s.slotKey}:${s.resolvedVariant}`}
+                style={{
+                  padding: "var(--yc-space-3)",
+                  background: "var(--yc-color-fill)",
+                  borderRadius: "var(--yc-radius-lg)",
+                }}
+              >
+                <div
+                  style={{
+                    fontFamily: "var(--yc-font-mono)",
+                    fontSize: "var(--yc-font-size-xs)",
+                    color: "var(--yc-color-primary)",
+                    marginBottom: 2,
+                  }}
+                >
+                  {s.slotKey}
+                </div>
+                <div
+                  style={{
+                    fontSize: "var(--yc-font-size-sm)",
+                    fontWeight: "var(--yc-font-weight-semibold)",
+                  }}
+                >
+                  {s.resolvedVariant}
+                  <span
+                    style={{
+                      marginLeft: 6,
+                      fontWeight: "var(--yc-font-weight-regular)",
+                      color: "var(--yc-color-text-secondary)",
+                    }}
+                  >
+                    {s.users} user{s.users === 1 ? "" : "s"}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Latest LLM rationales */}
+          <h4
+            style={{
+              fontSize: "var(--yc-font-size-sm)",
+              fontWeight: "var(--yc-font-weight-semibold)",
+              marginBottom: "var(--yc-space-3)",
+              color: "var(--yc-color-text-secondary)",
+            }}
+          >
+            Latest AI Reports
+          </h4>
+          <div style={{ display: "flex", flexDirection: "column", gap: "var(--yc-space-3)" }}>
+            {insights.recommendations.slice(0, 10).map((r, i) => (
+              <div
+                key={`${r.endUserId}:${r.slotKey}:${i}`}
+                style={{
+                  padding: "var(--yc-space-3)",
+                  border: "1px solid var(--yc-color-border-secondary)",
+                  borderRadius: "var(--yc-radius-lg)",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontSize: "var(--yc-font-size-xs)",
+                    marginBottom: 4,
+                  }}
+                >
+                  <span>
+                    <span
+                      style={{
+                        fontFamily: "var(--yc-font-mono)",
+                        color: "var(--yc-color-primary)",
+                      }}
+                    >
+                      {r.slotKey}
+                    </span>
+                    <span style={{ color: "var(--yc-color-text-secondary)" }}>
+                      {" "}
+                      → {r.resolvedVariant}
+                    </span>
+                  </span>
+                  <span style={{ color: "var(--yc-color-text-tertiary)" }}>
+                    {new Date(r.updatedAt).toLocaleString()}
+                  </span>
+                </div>
+                {r.rationale && (
+                  <p
+                    style={{
+                      fontSize: "var(--yc-font-size-sm)",
+                      color: "var(--yc-color-text)",
+                      margin: 0,
+                    }}
+                  >
+                    {r.rationale}
+                  </p>
+                )}
+                <div
+                  style={{
+                    fontSize: "var(--yc-font-size-xs)",
+                    color: "var(--yc-color-text-tertiary)",
+                    marginTop: 4,
+                    fontFamily: "var(--yc-font-mono)",
+                  }}
+                >
+                  {r.endUserId}
+                  {r.variantWeights &&
+                    " · " +
+                      Object.entries(r.variantWeights)
+                        .map(([v, w]) => `${v} ${(w * 100).toFixed(0)}%`)
+                        .join(" · ")}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

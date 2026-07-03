@@ -6,6 +6,7 @@ import {
   slotDefinitions,
 } from "../db/schema.js";
 import { analyzeAndStoreRecommendations } from "../services/llm-analyzer.js";
+import { describeError } from "../lib/errors.js";
 
 const EVENT_WEIGHTS: Record<string, number> = {
   impression: 0.0,
@@ -157,7 +158,7 @@ export async function runAnalysis(): Promise<AnalysisResult> {
     }
   } catch (err) {
     // LM might be unreachable — that's fine, EMA already did the job
-    console.warn("[analyzer] LLM analysis unavailable, using EMA only:", (err as Error).message);
+    console.warn("[analyzer] LLM analysis unavailable, using EMA only:", describeError(err));
   }
 
   // 6. Mark events as processed

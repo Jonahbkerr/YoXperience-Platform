@@ -150,4 +150,89 @@ router.get(
   }
 );
 
+// GET /insights — AI recommendation reports for a project
+// Per-slot aggregates of the LLM analysis stored in endUserPreferences,
+// plus the most recent individual recommendations with rationale.
+router.get(
+  "/insights",
+  requireAuth,
+  requireOrgAccess("member"),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { projectId } = req.params;
+      const orgId = req.auth!.orgId;
+
+      const project = await verifyProjectAccess(projectId, orgId);
+      if (!project) {
+        res.status(404).json({ error: "Project not found" });
+        return;
+      }
+
+      // Per-slot rollup: users analyzed, variant distribution, freshness
+      const slotRollups = await db
+        .select({
+          slotKey: endUserPreferences.slotKey,
+          resolvedVariant: endUserPreferences.resolvedVariant,
+          users: sql<number>`count(*)::int`,
+          lastUpdated: sql<string>`max(${endUserPreferences.updatedAt})`,
+          withRationale: sql<number>`count(${endUserPreferences.rationale})::int`,
+        })
+        .from(endUserPreferences)
+        .where(eq(endUserPreferences.projectId, projectId))
+        .groupBy(endUserPreferences.slotKey, endUserPreferences.resolvedVariant)
+        .orderBy(endUserPreferences.slotKey, sql`count(*) desc`);
+
+      // Latest individual LLM recommendations (the human-readable reports)
+      const latest = await db
+        .select({
+          endUserId: endUserPreferences.endUserId,
+          slotKey: endUserPreferences.slotKey,
+          resolvedVariant: endUserPreferences.resolvedVariant,
+          variantWeights: endUserPreferences.variantWeights,
+          rationale: endUserPreferences.rationale,
+          updatedAt: endUserPreferences.updatedAt,
+        })
+        .from(endUserPreferences)
+        .where(
+          and(
+            eq(endUserPreferences.projectId, projectId),
+            sql`${endUserPreferences.rationale} is not null`
+          )
+        )
+        .orderBy(sql`${endUserPreferences.updatedAt} desc`)
+        .limit(50);
+
+      const [totals] = await db
+        .select({
+          analyzedUsers: sql<number>`count(distinct ${endUserPreferences.endUserId})::int`,
+          totalRecommendations: sql<number>`count(*)::int`,
+          llmRecommendations: sql<number>`count(${endUserPreferences.rationale})::int`,
+        })
+        .from(endUserPreferences)
+        .where(eq(endUserPreferences.projectId, projectId));
+
+      res.json({
+        totals,
+        slots: slotRollups,
+        recommendations: latest.map((r) => ({
+          ...r,
+          variantWeights: safeParseWeights(r.variantWeights),
+        })),
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+function safeParseWeights(raw: string): Record<string, number> | null {
+  try {
+    const parsed = JSON.parse(raw);
+    // Some rows are double-encoded ("\"{...}\"") — unwrap once more
+    return typeof parsed === "string" ? JSON.parse(parsed) : parsed;
+  } catch {
+    return null;
+  }
+}
+
 export default router;
