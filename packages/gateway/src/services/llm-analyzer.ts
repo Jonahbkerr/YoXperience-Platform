@@ -193,6 +193,37 @@ Rules:
 Respond ONLY with the JSON object. No markdown. No prose.`;
 }
 
+/**
+ * Pull the JSON object out of a chatty model response.
+ *
+ * Gemma-style models wrap output in channel tags, and the JSON usually
+ * lives AFTER the thought block ("<|channel>thought ... <|channel>final
+ * {json}"). Truncating at the first tag (the old strategy) deleted the
+ * JSON along with the thought. Instead: split on channel tags and scan
+ * segments last-to-first, falling back to the whole response.
+ */
+export function extractJsonObject(raw: string): string | null {
+  const cleaned = raw
+    .replace(/```json\s*/g, "")
+    .replace(/```\s*/g, "")
+    .trim();
+
+  const channelTag = /<\/?\*?\|*channel[^>]*>/g;
+  const segments = cleaned
+    .split(channelTag)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const candidates =
+    segments.length > 1 ? [...segments.reverse(), cleaned] : [cleaned];
+
+  for (const candidate of candidates) {
+    const match = candidate.match(/\{[\s\S]*\}/);
+    if (match) return match[0];
+  }
+  return null;
+}
+
 export async function analyzeWithLLM(
   summaries: TelemetrySummary[],
   config: LMConfig
@@ -230,31 +261,8 @@ export async function analyzeWithLLM(
   let content = json.choices[0]?.message?.content;
   if (!content) throw new Error("LM returned empty content");
 
-  // Strip Gemma thought channel noise.
-  // The model may output opening tags without closing tags (e.g. "<|channel>thought\n...")
-  // Strategy: remove everything from the opening tag to the end of the response if no closing tag,
-  // or remove the tagged section if both tags are present.
-  // Also handles: <|channel>...<channel|>, <|channel>...<|channel>, etc.
-  const thoughtOpen = /<\/?\*?\|*channel[^>]*>/g;
-  const thoughtClose = /<\/?\*?\|*channel[^>]*>/g;
-  
-  // First try paired tags
-  content = content.replace(/<\/?\*?\|*channel[^>]*>[\s\S]*?<\/?\*?\|*channel[^>]*>/g, "").trim();
-  
-  // If still has thought channel noise, strip from first opening tag to EOF
-  if (/<\|?channel/.test(content)) {
-    const idx = content.search(/<\|?channel/);
-    content = content.substring(0, idx).trim();
-  }
-
-  // Remove markdown fences if present
-  content = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-
-  // Extract JSON object
-  const jsonMatch = content.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error("LM returned no JSON object");
-
-  const jsonStr = jsonMatch[0];
+  const jsonStr = extractJsonObject(content);
+  if (!jsonStr) throw new Error("LM returned no JSON object");
   let parsed: any;
   try {
     parsed = JSON.parse(jsonStr);
