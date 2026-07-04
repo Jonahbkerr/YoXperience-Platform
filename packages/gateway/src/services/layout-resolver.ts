@@ -1,6 +1,6 @@
 import { eq, and } from "drizzle-orm";
 import { db } from "../db/client.js";
-import { slotDefinitions, endUserPreferences } from "../db/schema.js";
+import { slotDefinitions, endUserPreferences, projects } from "../db/schema.js";
 
 export interface SlotConfig {
   slotKey: string;
@@ -14,6 +14,17 @@ export interface LayoutConfig {
   userId: string;
   slots: Record<string, SlotConfig>;
   resolvedAt: string;
+  experimentsEnabled: boolean;
+}
+
+/**
+ * Emergency stop. EXPERIMENTS_ENABLED=false on the gateway pins every
+ * slot in every project to its default variant, regardless of per-project
+ * or per-slot settings. Read per-request so a redeploy isn't needed to
+ * flip it on platforms that support live env updates.
+ */
+function globalExperimentsEnabled(): boolean {
+  return process.env.EXPERIMENTS_ENABLED !== "false";
 }
 
 /**
@@ -47,6 +58,15 @@ export async function resolveLayout(
   projectId: string,
   endUserId: string
 ): Promise<LayoutConfig> {
+  const [project] = await db
+    .select({ experimentsEnabled: projects.experimentsEnabled })
+    .from(projects)
+    .where(eq(projects.id, projectId))
+    .limit(1);
+
+  const experimentsEnabled =
+    globalExperimentsEnabled() && (project?.experimentsEnabled ?? true);
+
   const slots = await db
     .select()
     .from(slotDefinitions)
@@ -73,7 +93,11 @@ export async function resolveLayout(
     let variant: string;
     let confidence = 0;
 
-    if (mode === "forced" && slot.forcedVariant) {
+    if (!experimentsEnabled) {
+      // Kill switch active — everyone gets the default variant
+      variant = slot.defaultVariant;
+      confidence = 1;
+    } else if (mode === "forced" && slot.forcedVariant) {
       variant = slot.forcedVariant;
       confidence = 1;
     } else if (mode === "split" && slot.trafficSplit) {
@@ -107,5 +131,6 @@ export async function resolveLayout(
     userId: endUserId,
     slots: slotConfigs,
     resolvedAt: new Date().toISOString(),
+    experimentsEnabled,
   };
 }

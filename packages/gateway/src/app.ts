@@ -51,38 +51,21 @@ export function createApp() {
   app.use("/v1", sdkRouter);
   app.use("/v1", analyzeRouter);
 
-  // Health check + debug
+  // Public liveness probe. Tenant details (project names, per-project
+  // counts) are intentionally not exposed here — use the authed dashboard
+  // APIs for that data.
   app.get("/health", async (_req, res) => {
     try {
       const { pool } = await import("./db/client.js");
       const eventsRes = await pool.query("SELECT count(*)::int as count FROM telemetry_events");
-      const slotsRes = await pool.query("SELECT count(*)::int as count FROM slot_definitions");
-      const keysRes = await pool.query("SELECT count(*)::int as count FROM api_keys");
-      const projectsRes = await pool.query("SELECT id, name FROM projects");
-      const eventsByProject = await pool.query(
-        "SELECT project_id, count(*)::int as count FROM telemetry_events GROUP BY project_id"
-      );
-      const slotsByProject = await pool.query(
-        "SELECT project_id, count(*)::int as count FROM slot_definitions GROUP BY project_id"
-      );
-      const keysByProject = await pool.query(
-        "SELECT project_id, count(*)::int as count, bool_or(is_active) as has_active FROM api_keys GROUP BY project_id"
-      );
       res.json({
         status: "ok",
         service: "yoxperience-gateway",
-        db: {
-          events: eventsRes.rows[0].count,
-          slots: slotsRes.rows[0].count,
-          keys: keysRes.rows[0].count,
-        },
-        projects: projectsRes.rows,
-        eventsByProject: eventsByProject.rows,
-        slotsByProject: slotsByProject.rows,
-        keysByProject: keysByProject.rows,
+        db: { events: eventsRes.rows[0].count },
+        experimentsEnabled: process.env.EXPERIMENTS_ENABLED !== "false",
       });
     } catch (err: any) {
-      res.json({ status: "ok", service: "yoxperience-gateway", dbError: err.message });
+      res.status(503).json({ status: "degraded", service: "yoxperience-gateway", dbError: err.message });
     }
   });
 

@@ -68,6 +68,8 @@ export const projects = pgTable("projects", {
   name: text("name").notNull(),
   slug: text("slug").notNull(),
   coreApiUrl: text("core_api_url"),
+  // Master switch: false pins every slot to its default variant
+  experimentsEnabled: boolean("experiments_enabled").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

@@ -110,6 +110,33 @@ export default function Slots() {
   const [saving, setSaving] = useState(false);
   const [configError, setConfigError] = useState("");
 
+  // Project-level master switch: off = every slot serves its default variant
+  const [experimentsEnabled, setExperimentsEnabled] = useState<boolean | null>(null);
+  const [togglingExperiments, setTogglingExperiments] = useState(false);
+
+  useEffect(() => {
+    if (!selectedProject) return;
+    api<{ experimentsEnabled?: boolean }>(`/api/projects/${selectedProject.id}`)
+      .then((p) => setExperimentsEnabled(p.experimentsEnabled ?? true))
+      .catch(() => setExperimentsEnabled(null));
+  }, [selectedProject?.id]);
+
+  const toggleExperiments = async () => {
+    if (!selectedProject || experimentsEnabled === null || togglingExperiments) return;
+    setTogglingExperiments(true);
+    try {
+      const updated = await api<{ experimentsEnabled: boolean }>(
+        `/api/projects/${selectedProject.id}`,
+        { method: "PATCH", body: JSON.stringify({ experimentsEnabled: !experimentsEnabled }) }
+      );
+      setExperimentsEnabled(updated.experimentsEnabled);
+    } catch {
+      // keep previous state on failure
+    } finally {
+      setTogglingExperiments(false);
+    }
+  };
+
   useEffect(() => {
     if (!selectedProject) {
       setLoading(false);
@@ -300,9 +327,33 @@ export default function Slots() {
             {selectedProject.name} &middot; Adaptive UI regions
           </p>
         </div>
-        <button style={btnPrimary} onClick={() => setShowCreate(true)}>
-          <Plus size={16} /> Add slot
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--yc-space-3)" }}>
+          {experimentsEnabled !== null && (
+            <button
+              onClick={toggleExperiments}
+              disabled={togglingExperiments}
+              title={
+                experimentsEnabled
+                  ? "Experiments are live. Click to freeze — every visitor gets each slot's default variant."
+                  : "Experiments are frozen — all visitors see default variants. Click to resume."
+              }
+              style={{
+                ...btnOutline,
+                color: experimentsEnabled ? "var(--yc-color-success)" : "#f59e0b",
+                borderColor: experimentsEnabled
+                  ? "var(--yc-color-success)"
+                  : "#f59e0b",
+                opacity: togglingExperiments ? 0.6 : 1,
+              }}
+              data-testid="toggle-experiments"
+            >
+              {experimentsEnabled ? "● Experiments: ON" : "❚❚ Frozen — defaults only"}
+            </button>
+          )}
+          <button style={btnPrimary} onClick={() => setShowCreate(true)}>
+            <Plus size={16} /> Add slot
+          </button>
+        </div>
       </div>
 
       {loading ? (
