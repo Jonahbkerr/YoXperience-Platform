@@ -33,10 +33,13 @@ const codeBlock: React.CSSProperties = {
 function HeroBackdrop() {
   const [videoOk, setVideoOk] = React.useState(false);
   return (
-    <div aria-hidden style={{ position: 'absolute', inset: 0, overflow: 'hidden', background: '#12081f' }}>
-      <div className="yx-hero-blob a" />
-      <div className="yx-hero-blob b" />
-      <div className="yx-hero-blob c" />
+    <div aria-hidden style={{ position: 'absolute', inset: 0, overflow: 'hidden', background: '#0b0512' }}>
+      {/* Animated gradient blobs — the design when no video; dimmed under it */}
+      <div style={{ position: 'absolute', inset: 0, opacity: videoOk ? 0.35 : 1, transition: 'opacity 1.2s ease' }}>
+        <div className="yx-hero-blob a" />
+        <div className="yx-hero-blob b" />
+        <div className="yx-hero-blob c" />
+      </div>
       <video
         className="yx-hero-video"
         src="/hero-loop.mp4"
@@ -45,11 +48,14 @@ function HeroBackdrop() {
         onError={() => setVideoOk(false)}
         style={{
           position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
-          opacity: videoOk ? 0.5 : 0, transition: 'opacity 1.2s ease',
+          opacity: videoOk ? 0.62 : 0, transition: 'opacity 1.2s ease',
         }}
       />
-      {/* Contrast scrim so headline text always passes */}
-      <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at center, rgba(18,8,31,0.25) 0%, rgba(18,8,31,0.75) 100%)' }} />
+      {/* Contrast scrims: (1) darken the CENTER band where the bright HUD core
+          and the headline overlap, (2) a soft overall floor. Edges stay clear
+          so the glowing side panels remain visible. */}
+      <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 52% 58% at 50% 47%, rgba(11,5,18,0.86) 0%, rgba(11,5,18,0.58) 42%, rgba(11,5,18,0.22) 72%, rgba(11,5,18,0) 100%)' }} />
+      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(11,5,18,0.45) 0%, rgba(11,5,18,0) 30%, rgba(11,5,18,0) 70%, rgba(11,5,18,0.55) 100%)' }} />
     </div>
   );
 }
