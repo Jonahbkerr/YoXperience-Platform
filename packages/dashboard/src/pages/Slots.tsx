@@ -114,12 +114,47 @@ export default function Slots() {
   const [experimentsEnabled, setExperimentsEnabled] = useState<boolean | null>(null);
   const [togglingExperiments, setTogglingExperiments] = useState(false);
 
+  // Public site URL — enables clickable "Preview" links per variant
+  const [siteUrl, setSiteUrl] = useState<string>("");
+  const [siteUrlInput, setSiteUrlInput] = useState<string>("");
+  const [savingSiteUrl, setSavingSiteUrl] = useState(false);
+
   useEffect(() => {
     if (!selectedProject) return;
-    api<{ experimentsEnabled?: boolean }>(`/api/projects/${selectedProject.id}`)
-      .then((p) => setExperimentsEnabled(p.experimentsEnabled ?? true))
+    // GET /:id returns { project, keys } — read from the nested project
+    api<{ project?: { experimentsEnabled?: boolean; siteUrl?: string | null } }>(
+      `/api/projects/${selectedProject.id}`
+    )
+      .then((res) => {
+        setExperimentsEnabled(res.project?.experimentsEnabled ?? true);
+        setSiteUrl(res.project?.siteUrl ?? "");
+        setSiteUrlInput(res.project?.siteUrl ?? "");
+      })
       .catch(() => setExperimentsEnabled(null));
   }, [selectedProject?.id]);
+
+  const saveSiteUrl = async () => {
+    if (!selectedProject || savingSiteUrl) return;
+    setSavingSiteUrl(true);
+    try {
+      const trimmed = siteUrlInput.trim().replace(/\/$/, "");
+      await api(`/api/projects/${selectedProject.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ siteUrl: trimmed || null }),
+      });
+      setSiteUrl(trimmed);
+    } catch {
+      /* keep previous */
+    } finally {
+      setSavingSiteUrl(false);
+    }
+  };
+
+  // Build a preview URL that forces a specific variant on the live site.
+  const previewUrl = (slotKey: string, variant: string) =>
+    siteUrl
+      ? `${siteUrl}${siteUrl.includes("?") ? "&" : "?"}yxp_preview=${encodeURIComponent(slotKey)}:${encodeURIComponent(variant)}`
+      : null;
 
   const toggleExperiments = async () => {
     if (!selectedProject || experimentsEnabled === null || togglingExperiments) return;
@@ -356,6 +391,40 @@ export default function Slots() {
         </div>
       </div>
 
+      {/* Site URL setting — enables clickable per-variant Preview links */}
+      {selectedProject && (
+        <div
+          style={{
+            ...cardStyle,
+            alignItems: "center",
+            gap: 10,
+            padding: "10px 16px",
+            marginBottom: "var(--yc-space-4)",
+          }}
+        >
+          <span style={{ fontSize: "var(--yc-font-size-xs)", color: "var(--yc-color-text-tertiary)", whiteSpace: "nowrap" }}>
+            Site URL
+          </span>
+          <input
+            style={{ ...inputStyle, flex: 1, maxWidth: 360, padding: "6px 10px" }}
+            value={siteUrlInput}
+            onChange={(e) => setSiteUrlInput(e.target.value)}
+            placeholder="https://yourapp.com"
+            onKeyDown={(e) => { if (e.key === "Enter") saveSiteUrl(); }}
+          />
+          <button
+            style={{ ...btnOutline, padding: "6px 12px", opacity: savingSiteUrl || siteUrlInput.trim().replace(/\/$/, "") === siteUrl ? 0.5 : 1 }}
+            disabled={savingSiteUrl || siteUrlInput.trim().replace(/\/$/, "") === siteUrl}
+            onClick={saveSiteUrl}
+          >
+            {savingSiteUrl ? "Saving…" : "Save"}
+          </button>
+          <span style={{ fontSize: "var(--yc-font-size-xs)", color: "var(--yc-color-text-tertiary)", whiteSpace: "nowrap" }}>
+            {siteUrl ? "Click any variant ↗ to preview it live" : "Set this to preview variants on your site"}
+          </span>
+        </div>
+      )}
+
       {loading ? (
         <p style={{ color: "var(--yc-color-text-secondary)" }}>Loading...</p>
       ) : slots.length === 0 ? (
@@ -441,26 +510,41 @@ export default function Slots() {
                       </div>
                     )}
                     <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
-                      {parsedVariants.map((v, i) => (
-                        <span
-                          key={v}
-                          style={{
-                            display: "inline-block",
-                            padding: "2px 8px",
-                            borderRadius: "var(--yc-radius-full)",
-                            fontSize: "var(--yc-font-size-xs)",
-                            fontWeight: "var(--yc-font-weight-medium)",
-                            background:
-                              i === 0
-                                ? "var(--yc-color-primary)"
-                                : "var(--yc-color-fill)",
-                            color: i === 0 ? "#fff" : "var(--yc-color-text-secondary)",
-                          }}
-                        >
-                          {v}
-                          {i === 0 ? " (default)" : ""}
-                        </span>
-                      ))}
+                      {parsedVariants.map((v, i) => {
+                        const url = previewUrl(slot.slotKey, v);
+                        const chip = (
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 4,
+                              padding: "2px 8px",
+                              borderRadius: "var(--yc-radius-full)",
+                              fontSize: "var(--yc-font-size-xs)",
+                              fontWeight: "var(--yc-font-weight-medium)",
+                              background:
+                                i === 0
+                                  ? "var(--yc-color-primary)"
+                                  : "var(--yc-color-fill)",
+                              color: i === 0 ? "#fff" : "var(--yc-color-text-secondary)",
+                              cursor: url ? "pointer" : "default",
+                              textDecoration: "none",
+                            }}
+                            title={url ? `Preview "${v}" on your site` : undefined}
+                          >
+                            {v}
+                            {i === 0 ? " (default)" : ""}
+                            {url && <span style={{ opacity: 0.7 }}>↗</span>}
+                          </span>
+                        );
+                        return url ? (
+                          <a key={v} href={url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
+                            {chip}
+                          </a>
+                        ) : (
+                          <span key={v}>{chip}</span>
+                        );
+                      })}
                       {badge && (
                         <span
                           style={{

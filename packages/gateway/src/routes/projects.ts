@@ -146,7 +146,7 @@ router.patch(
     try {
       const orgId = req.auth!.orgId;
       const { projectId } = req.params;
-      const { name, slug, coreApiUrl, experimentsEnabled } = req.body;
+      const { name, slug, coreApiUrl, siteUrl, experimentsEnabled } = req.body;
 
       // Verify project belongs to org
       const [existing] = await db
@@ -182,6 +182,7 @@ router.patch(
       if (name !== undefined) updates.name = name;
       if (slug !== undefined) updates.slug = slug;
       if (coreApiUrl !== undefined) updates.coreApiUrl = coreApiUrl || null;
+      if (siteUrl !== undefined) updates.siteUrl = siteUrl || null;
       if (experimentsEnabled !== undefined)
         updates.experimentsEnabled = Boolean(experimentsEnabled);
 
