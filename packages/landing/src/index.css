@@ -184,3 +184,70 @@ body {
   .yx-hero-blob { animation: none; }
   .yx-hero-video { display: none; }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   Premium dark design layer — carries the cinematic hero through
+   the whole page. Everything below the hero used to be flat white.
+   ══════════════════════════════════════════════════════════════ */
+.yx-page { background: #0b0512; color: rgba(255,255,255,0.92); }
+
+.yx-section { position: relative; padding: 120px 32px; display: flex; flex-direction: column; align-items: center; overflow: hidden; }
+.yx-section-inner { position: relative; width: 100%; max-width: 1120px; }
+/* soft brand glow behind a section, no hard color blocks */
+.yx-glow-tl::before { content: ""; position: absolute; top: -10%; left: -5%; width: 45vw; height: 45vw; max-width: 700px; max-height: 700px; background: radial-gradient(circle, rgba(109,41,217,0.16), transparent 62%); pointer-events: none; }
+.yx-glow-br::after { content: ""; position: absolute; bottom: -15%; right: -8%; width: 45vw; height: 45vw; max-width: 700px; max-height: 700px; background: radial-gradient(circle, rgba(230,79,169,0.13), transparent 62%); pointer-events: none; }
+.yx-divider { height: 1px; width: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.09), transparent); }
+
+.yx-eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  background: linear-gradient(90deg, #b98cff, #E64FA9); -webkit-background-clip: text; background-clip: text; color: transparent; margin-bottom: 16px; }
+.yx-h2 { font-size: clamp(28px, 4vw, 44px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.08; margin: 0 0 16px; color: #fff; }
+.yx-lede { font-size: 18px; line-height: 1.65; color: rgba(255,255,255,0.66); max-width: 640px; }
+.yx-grad { background: linear-gradient(90deg, #E64FA9, #b98cff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+/* Glassmorphic card */
+.yx-card { position: relative; border-radius: 18px; padding: 26px 26px 28px;
+  background: linear-gradient(160deg, rgba(255,255,255,0.055), rgba(255,255,255,0.02));
+  border: 1px solid rgba(255,255,255,0.09);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset, 0 20px 40px -24px rgba(0,0,0,0.8);
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease; overflow: hidden; }
+.yx-card::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(180,140,255,0.5), rgba(230,79,169,0.5), transparent); opacity: 0.7; }
+.yx-card:hover { transform: translateY(-4px); border-color: rgba(180,140,255,0.35); box-shadow: 0 1px 0 rgba(255,255,255,0.08) inset, 0 28px 60px -28px rgba(109,41,217,0.55); }
+.yx-card h3 { font-size: 19px; font-weight: 700; margin: 0 0 10px; color: #fff; letter-spacing: -0.01em; }
+.yx-card p { font-size: 15px; line-height: 1.62; color: rgba(255,255,255,0.62); margin: 0; }
+.yx-card-ico { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px;
+  background: linear-gradient(150deg, rgba(109,41,217,0.35), rgba(230,79,169,0.28)); border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 6px 20px -8px rgba(230,79,169,0.5); }
+
+/* inline code chip on dark */
+.yx-code { font-family: var(--yc-font-mono); font-size: 0.88em; padding: 1px 6px; border-radius: 5px; background: rgba(180,140,255,0.12); border: 1px solid rgba(180,140,255,0.18); color: #d6c6ff; }
+
+/* numbered step */
+.yx-step-n { flex-shrink: 0; width: 46px; height: 46px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 18px;
+  color: #fff; background: linear-gradient(150deg, #6D29D9, #E64FA9); box-shadow: 0 10px 26px -10px rgba(230,79,169,0.6); }
+
+/* buttons */
+.yx-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 13px 28px; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; text-decoration: none; border: none; transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease; }
+.yx-btn-primary { color: #fff; background: linear-gradient(135deg, #E64FA9, #8b31d6); box-shadow: 0 10px 30px -8px rgba(230,79,169,0.55); }
+.yx-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 16px 40px -10px rgba(230,79,169,0.7); }
+.yx-btn-ghost { color: #fff; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.18); backdrop-filter: blur(8px); }
+.yx-btn-ghost:hover { background: rgba(255,255,255,0.12); transform: translateY(-2px); }
+
+/* code / terminal window */
+.yx-win { border-radius: 14px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); background: #0d0a16; box-shadow: 0 30px 60px -30px rgba(0,0,0,0.9); }
+.yx-win-bar { display: flex; align-items: center; gap: 7px; padding: 11px 14px; background: rgba(255,255,255,0.03); border-bottom: 1px solid rgba(255,255,255,0.07); }
+.yx-win-dot { width: 11px; height: 11px; border-radius: 50%; }
+.yx-win-body { padding: 18px 20px; font-family: var(--yc-font-mono); font-size: 13.5px; line-height: 1.7; color: #d7d2e6; white-space: pre; overflow-x: auto; }
+
+/* docs */
+.yx-doc-nav a { display: block; padding: 9px 18px; color: rgba(255,255,255,0.6); text-decoration: none; font-size: 14px; border-left: 2px solid transparent; transition: color 0.2s, border-color 0.2s, background 0.2s; }
+.yx-doc-nav a:hover { color: #fff; background: rgba(255,255,255,0.03); }
+.yx-doc-nav a.active { color: #fff; border-left-color: #E64FA9; background: linear-gradient(90deg, rgba(230,79,169,0.12), transparent); font-weight: 600; }
+.yx-doc h2 { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; color: #fff; margin: 0 0 18px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+.yx-doc p { line-height: 1.7; color: rgba(255,255,255,0.72); margin: 0 0 16px; }
+.yx-doc li { line-height: 1.7; color: rgba(255,255,255,0.72); margin-bottom: 8px; }
+.yx-doc a { color: #E64FA9; text-decoration: none; }
+
+/* header */
+.yx-header { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 16px 32px;
+  background: rgba(11,5,18,0.72); backdrop-filter: blur(16px); border-bottom: 1px solid rgba(255,255,255,0.07); }
+.yx-nav a { color: rgba(255,255,255,0.7); text-decoration: none; font-weight: 500; font-size: 15px; transition: color 0.2s; }
+.yx-nav a:hover { color: #fff; }
