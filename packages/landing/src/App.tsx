@@ -1,6 +1,8 @@
 import React from 'react';
 import { Routes, Route, Link } from 'react-router-dom';
 import { track } from '@vercel/analytics';
+import { Slot, useConversion } from './lib/yoxperience';
+import type { VariantProps } from './lib/yoxperience';
 
 const Logo = () => (
   <svg width="40" height="40" viewBox="0 0 465 472" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -22,53 +24,137 @@ const codeBlock: React.CSSProperties = {
   border: '1px solid var(--yc-color-border-secondary)', fontFamily: 'monospace', fontSize: '14px', lineHeight: '1.5', whiteSpace: 'pre'
 };
 
+/**
+ * Hero backdrop: animated brand-gradient blobs, with a video layer that
+ * activates automatically when /hero-loop.mp4 exists in the deploy. Until
+ * the Higgsfield loop is generated, the blobs ARE the design — the video
+ * simply fades in on top when present (onError keeps it hidden).
+ */
+function HeroBackdrop() {
+  const [videoOk, setVideoOk] = React.useState(false);
+  return (
+    <div aria-hidden style={{ position: 'absolute', inset: 0, overflow: 'hidden', background: '#12081f' }}>
+      <div className="yx-hero-blob a" />
+      <div className="yx-hero-blob b" />
+      <div className="yx-hero-blob c" />
+      <video
+        className="yx-hero-video"
+        src="/hero-loop.mp4"
+        autoPlay muted loop playsInline
+        onCanPlay={() => setVideoOk(true)}
+        onError={() => setVideoOk(false)}
+        style={{
+          position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
+          opacity: videoOk ? 0.5 : 0, transition: 'opacity 1.2s ease',
+        }}
+      />
+      {/* Contrast scrim so headline text always passes */}
+      <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at center, rgba(18,8,31,0.25) 0%, rgba(18,8,31,0.75) 100%)' }} />
+    </div>
+  );
+}
+
+/**
+ * Dogfooding: the hero headline is a live YoXperience slot ("landing-hero").
+ * Three framings compete; CTA clicks are the engagement signal and
+ * dashboard click-through is the conversion. This page tests itself.
+ */
+const heroH1: React.CSSProperties = { fontSize: 'var(--yc-font-size-5xl)', fontWeight: 'var(--yc-font-weight-bold)', lineHeight: 'var(--yc-line-height-tight)', maxWidth: '840px', margin: '0 0 var(--yc-space-6) 0', color: '#fff' };
+const heroSub: React.CSSProperties = { fontSize: 'var(--yc-font-size-xl)', color: 'rgba(255,255,255,0.82)', maxWidth: '680px', margin: '0 0 var(--yc-space-10) 0', lineHeight: 'var(--yc-line-height-relaxed)' };
+
+function HeroControl(_: VariantProps) {
+  return (
+    <>
+      <h1 style={heroH1}>Interfaces that <span style={{ color: '#E64FA9' }}>learn</span> from your users.</h1>
+      <p style={heroSub}>
+        YoXperience runs controlled experiments on your UI, personalizes each visitor with AI,
+        attributes real conversions to every variant — and asks <em>you</em> before anything changes site-wide.
+      </p>
+    </>
+  );
+}
+
+function HeroOutcome(_: VariantProps) {
+  return (
+    <>
+      <h1 style={heroH1}>Ship the <span style={{ color: '#E64FA9' }}>winning</span> UI. Not your best guess.</h1>
+      <p style={heroSub}>
+        Every headline, layout, and CTA competes on real visitor behavior. The AI personalizes per user,
+        the evidence accumulates per variant, and nothing changes site-wide until you approve it.
+      </p>
+    </>
+  );
+}
+
+function HeroDogfood(_: VariantProps) {
+  return (
+    <>
+      <h1 style={heroH1}>This page is <span style={{ color: '#E64FA9' }}>A/B testing itself</span> right now.</h1>
+      <p style={heroSub}>
+        The headline you're reading is one of three variants served by YoXperience — the same engine,
+        telemetry, and human-approved rollouts you'd put on your own product. You're the experiment.
+      </p>
+    </>
+  );
+}
+
 function LandingPage() {
+  const trackConversion = useConversion();
   return (
     <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
       <section style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        padding: 'var(--yc-space-16) var(--yc-space-8)', textAlign: 'center', backgroundColor: '#fff'
+        position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        padding: 'var(--yc-space-16) var(--yc-space-8)', textAlign: 'center', minHeight: '72vh'
       }}>
-        <div style={{
-          padding: 'var(--yc-space-2) var(--yc-space-4)', backgroundColor: 'var(--yc-color-primary-bg)', color: 'var(--yc-color-primary)',
-          borderRadius: 'var(--yc-radius-full)', fontSize: 'var(--yc-font-size-sm)', fontWeight: 'var(--yc-font-weight-semibold)', marginBottom: 'var(--yc-space-8)'
-        }}>
-          ✨ The Adaptive UI Engine for SaaS
-        </div>
+        <HeroBackdrop />
+        <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <div style={{
+            padding: 'var(--yc-space-2) var(--yc-space-4)', backgroundColor: 'rgba(255,255,255,0.1)', color: '#fff',
+            border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(8px)',
+            borderRadius: 'var(--yc-radius-full)', fontSize: 'var(--yc-font-size-sm)', fontWeight: 'var(--yc-font-weight-semibold)', marginBottom: 'var(--yc-space-8)'
+          }}>
+            ✨ The Adaptive UI Engine for SaaS
+          </div>
 
-        <h1 style={{ fontSize: 'var(--yc-font-size-5xl)', fontWeight: 'var(--yc-font-weight-bold)', lineHeight: 'var(--yc-line-height-tight)', maxWidth: '800px', margin: '0 0 var(--yc-space-6) 0' }}>
-          Interfaces that <span style={{ color: 'var(--yc-color-primary)' }}>learn</span> from your users.
-        </h1>
-
-        <p style={{ fontSize: 'var(--yc-font-size-xl)', color: 'var(--yc-color-text-secondary)', maxWidth: '680px', margin: '0 0 var(--yc-space-10) 0', lineHeight: 'var(--yc-line-height-relaxed)' }}>
-          YoXperience runs controlled experiments on your UI, personalizes each visitor with AI,
-          attributes real conversions to every variant — and asks <em>you</em> before anything changes site-wide.
-        </p>
-
-        <div style={{ display: 'flex', gap: 'var(--yc-space-4)', flexWrap: 'wrap', justifyContent: 'center' }}>
-          <button
-            onClick={() => { track('LandingCTA', { action: 'open_dashboard', source: 'hero' }); window.location.href = DASHBOARD_URL; }}
-            style={{
-              padding: 'var(--yc-space-3) var(--yc-space-8)', backgroundColor: 'var(--yc-color-primary)', color: '#ffffff', border: 'none',
-              borderRadius: 'var(--yc-radius-md)', fontSize: 'var(--yc-font-size-lg)', fontWeight: 'var(--yc-font-weight-semibold)', cursor: 'pointer', boxShadow: 'var(--yc-shadow-sm)'
+          <Slot
+            name="landing-hero"
+            variants={{
+              control: HeroControl,
+              outcome: HeroOutcome,
+              dogfood: HeroDogfood,
             }}
-          >
-            Open the Dashboard
-          </button>
-          <Link
-            to="/docs"
-            onClick={() => track('LandingCTA', { action: 'read_docs', source: 'hero' })}
-            style={{
-              padding: 'var(--yc-space-3) var(--yc-space-8)', backgroundColor: '#fff', color: 'var(--yc-color-text)', border: '1px solid var(--yc-color-border)',
-              borderRadius: 'var(--yc-radius-md)', fontSize: 'var(--yc-font-size-lg)', fontWeight: 'var(--yc-font-weight-semibold)', cursor: 'pointer', textDecoration: 'none'
-            }}
-          >
-            Read the Docs
-          </Link>
-        </div>
+            fallback={<HeroControl slotKey="landing-hero" variant="control" trackEvent={() => {}} />}
+          />
 
-        <div style={{ marginTop: 'var(--yc-space-10)', fontSize: 'var(--yc-font-size-sm)', color: 'var(--yc-color-text-tertiary)' }}>
-          Running in production today — powering 7 adaptive slots on <a href="https://bsmeter.ai" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--yc-color-primary)', textDecoration: 'none' }}>bsmeter.ai</a>
+          <div style={{ display: 'flex', gap: 'var(--yc-space-4)', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <button
+              onClick={() => {
+                track('LandingCTA', { action: 'open_dashboard', source: 'hero' });
+                trackConversion('dashboard_click');
+                window.location.href = DASHBOARD_URL;
+              }}
+              style={{
+                padding: 'var(--yc-space-3) var(--yc-space-8)', backgroundColor: '#E64FA9', color: '#ffffff', border: 'none',
+                borderRadius: 'var(--yc-radius-md)', fontSize: 'var(--yc-font-size-lg)', fontWeight: 'var(--yc-font-weight-semibold)', cursor: 'pointer', boxShadow: '0 4px 24px rgba(230,79,169,0.4)'
+              }}
+            >
+              Open the Dashboard
+            </button>
+            <Link
+              to="/docs"
+              onClick={() => track('LandingCTA', { action: 'read_docs', source: 'hero' })}
+              style={{
+                padding: 'var(--yc-space-3) var(--yc-space-8)', backgroundColor: 'rgba(255,255,255,0.08)', color: '#fff', border: '1px solid rgba(255,255,255,0.25)',
+                borderRadius: 'var(--yc-radius-md)', fontSize: 'var(--yc-font-size-lg)', fontWeight: 'var(--yc-font-weight-semibold)', cursor: 'pointer', textDecoration: 'none', backdropFilter: 'blur(8px)'
+              }}
+            >
+              Read the Docs
+            </Link>
+          </div>
+
+          <div style={{ marginTop: 'var(--yc-space-10)', fontSize: 'var(--yc-font-size-sm)', color: 'rgba(255,255,255,0.6)' }}>
+            Running in production today — powering 7 adaptive slots on <a href="https://bsmeter.ai" target="_blank" rel="noopener noreferrer" style={{ color: '#E64FA9', textDecoration: 'none' }}>bsmeter.ai</a> · and this hero
+          </div>
         </div>
       </section>
 
