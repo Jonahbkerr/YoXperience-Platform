@@ -40,6 +40,17 @@ describe("computeSlotRecommendation", () => {
     expect(r.reason).toContain("engagement events");
   });
 
+  it("flags a passive slot with impressions but zero engagement signal", () => {
+    const stats: VariantStat[] = [
+      { variant: "a", impressions: 96, engagements: 0, dismisses: 0 },
+      { variant: "b", impressions: 96, engagements: 0, dismisses: 0 },
+    ];
+    const r = computeSlotRecommendation(slot(), stats);
+    expect(r.status).toBe("gathering");
+    expect(r.reason).toContain("wire a conversion event");
+    expect(r.reason).toContain("indefinitely");
+  });
+
   it("recommends the higher-engagement variant when data is sufficient", () => {
     const stats: VariantStat[] = [
       { variant: "a", impressions: 500, engagements: 25, dismisses: 0 }, // 5%

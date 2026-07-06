@@ -252,16 +252,20 @@ router.get(
         .where(eq(slotDefinitions.projectId, projectId))
         .orderBy(slotDefinitions.createdAt);
 
-      // Per slot+variant engagement rollup across ALL telemetry.
-      // Positive engagement = anything that isn't a passive impression or an
-      // explicit dismiss (covers click, hover, scroll, install_click, etc.).
+      // Per slot+variant engagement rollup across ALL telemetry, counted by
+      // DISTINCT USER (not raw events) so the rate is a real per-visitor
+      // conversion rate — robust to power users and to conversion crediting.
+      //  - impressions = users who saw the variant
+      //  - engagements = users who engaged OR converted (anything positive:
+      //    click, hover, scroll, install_click, conversion, ...)
+      //  - dismisses   = users who dismissed it
       const perf = await db
         .select({
           slotKey: telemetryEvents.slotKey,
           variant: telemetryEvents.variant,
-          impressions: sql<number>`count(*) filter (where ${telemetryEvents.eventType} = 'impression')::int`,
-          engagements: sql<number>`count(*) filter (where ${telemetryEvents.eventType} not in ('impression','dismiss'))::int`,
-          dismisses: sql<number>`count(*) filter (where ${telemetryEvents.eventType} = 'dismiss')::int`,
+          impressions: sql<number>`count(distinct ${telemetryEvents.endUserId}) filter (where ${telemetryEvents.eventType} = 'impression')::int`,
+          engagements: sql<number>`count(distinct ${telemetryEvents.endUserId}) filter (where ${telemetryEvents.eventType} not in ('impression','dismiss'))::int`,
+          dismisses: sql<number>`count(distinct ${telemetryEvents.endUserId}) filter (where ${telemetryEvents.eventType} = 'dismiss')::int`,
         })
         .from(telemetryEvents)
         .where(eq(telemetryEvents.projectId, projectId))

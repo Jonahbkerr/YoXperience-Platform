@@ -62,6 +62,82 @@ router.post(
   }
 );
 
+// POST /v1/conversion — Credit a downstream conversion to every slot variant
+// the user was exposed to. This is how PASSIVE slots (score display, layout)
+// get measured: not by clicks on the element, but by whether the users who
+// saw a given variant went on to do something valuable (subscribe, install,
+// complete an analysis). Attribution is server-side from the user's exposure
+// history, so the slot doesn't need to be mounted at conversion time.
+router.post(
+  "/conversion",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { projectId } = req.apiKey!;
+      const { userId, conversionType } = req.body;
+
+      if (!userId || typeof userId !== "string") {
+        res.status(400).json({ error: "userId is required" });
+        return;
+      }
+      const type =
+        typeof conversionType === "string" && conversionType
+          ? conversionType
+          : "conversion";
+
+      // Every (slotKey, variant) this user has an impression for.
+      const exposures = await db
+        .selectDistinct({
+          slotKey: telemetryEvents.slotKey,
+          variant: telemetryEvents.variant,
+        })
+        .from(telemetryEvents)
+        .where(
+          and(
+            eq(telemetryEvents.projectId, projectId),
+            eq(telemetryEvents.endUserId, userId),
+            eq(telemetryEvents.eventType, "impression"),
+          ),
+        );
+
+      if (exposures.length === 0) {
+        res.status(202).json({ credited: 0 });
+        return;
+      }
+
+      // Credit each exposed variant at most once per user (lifetime), so a
+      // power user who converts repeatedly doesn't skew a variant's rate.
+      const already = await db
+        .selectDistinct({
+          slotKey: telemetryEvents.slotKey,
+          variant: telemetryEvents.variant,
+        })
+        .from(telemetryEvents)
+        .where(
+          and(
+            eq(telemetryEvents.projectId, projectId),
+            eq(telemetryEvents.endUserId, userId),
+            eq(telemetryEvents.eventType, "conversion"),
+          ),
+        );
+      const seen = new Set(already.map((a) => `${a.slotKey}::${a.variant}`));
+
+      const toWrite = exposures
+        .filter((e) => !seen.has(`${e.slotKey}::${e.variant}`))
+        .map((e) => ({
+          slotKey: e.slotKey,
+          variant: e.variant,
+          eventType: "conversion",
+          metadata: { conversionType: type },
+        }));
+
+      const count = await writeTelemetryEvents(projectId, userId, toWrite);
+      res.status(202).json({ credited: count });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
 // POST /v1/register-slots — Auto-register slots from SDK
 // The SDK calls this on mount with slot definitions found in the React tree.
 // Creates missing slots; merges new variants into existing ones.

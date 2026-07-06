@@ -145,12 +145,19 @@ export function computeSlotRecommendation(
 
   // Not enough data → honest "gathering" with what's missing.
   if (!ready || !winner) {
+    // Special case: plenty of impressions but ZERO positive signal. This slot
+    // isn't on track to graduate — it likely emits no engagement/conversion
+    // event (e.g. a passive score display or layout). Say so plainly rather
+    // than implying it just needs a few more.
+    const noSignal =
+      totalEngagements === 0 && totalImpressions >= MIN_TOTAL_IMPRESSIONS;
+
     const missing: string[] = [];
     if (totalImpressions < MIN_TOTAL_IMPRESSIONS)
       missing.push(`${MIN_TOTAL_IMPRESSIONS - totalImpressions} more impressions`);
     if (totalEngagements < MIN_TOTAL_ENGAGEMENTS)
       missing.push(
-        `${MIN_TOTAL_ENGAGEMENTS - totalEngagements} more engagement events (clicks/hovers)`,
+        `${MIN_TOTAL_ENGAGEMENTS - totalEngagements} more engagement events (clicks or conversions)`,
       );
     if (eligible.length < 2)
       missing.push(
@@ -171,8 +178,9 @@ export function computeSlotRecommendation(
       liftPct: null,
       confidence: "none",
       variants,
-      reason:
-        missing.length > 0
+      reason: noSignal
+        ? `${totalImpressions.toLocaleString()} people have seen this slot, but none have produced an engagement or conversion signal. If this slot isn't clickable (e.g. a score or layout), wire a conversion event so it can be measured — otherwise it will stay here indefinitely.`
+        : missing.length > 0
           ? `Gathering data — need ${missing.join(", ")} before a reliable call.`
           : "Gathering data.",
     };
