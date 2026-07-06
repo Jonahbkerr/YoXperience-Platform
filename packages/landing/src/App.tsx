@@ -151,6 +151,26 @@ function LandingPage() {
 
       <div className="yx-divider" style={{ maxWidth: 1120, margin: '0 auto' }} />
 
+      {/* PRODUCT — real dashboard screenshot */}
+      <section id="product" className="yx-section yx-glow-tl">
+        <div className="yx-section-inner" style={{ textAlign: 'center' }}>
+          <div className="yx-eyebrow">The dashboard</div>
+          <h2 className="yx-h2">You see the evidence. You make the call.</h2>
+          <p className="yx-lede" style={{ margin: '0 auto 48px' }}>The Recommendations queue shows which variant is winning across all visitors — with conversion rates, lift, and sample-size gates — then waits for your click. Nothing changes site-wide until you approve it.</p>
+          <div className="yx-browser">
+            <div className="yx-browser-bar">
+              <span className="yx-win-dot" style={{ background: '#ff5f57' }} />
+              <span className="yx-win-dot" style={{ background: '#febc2e' }} />
+              <span className="yx-win-dot" style={{ background: '#28c840' }} />
+              <span className="yx-browser-url">app.yoxperience.com/dashboard/recommendations</span>
+            </div>
+            <img src="/product-recommendations.png" alt="YoXperience Recommendations dashboard — winning variants with lift and one-click approval" style={{ display: 'block', width: '100%' }} loading="lazy" />
+          </div>
+        </div>
+      </section>
+
+      <div className="yx-divider" style={{ maxWidth: 1120, margin: '0 auto' }} />
+
       {/* USE CASES */}
       <section id="use-cases" className="yx-section yx-glow-tl">
         <div className="yx-section-inner" style={{ textAlign: 'center' }}>
