@@ -9,7 +9,18 @@ const Logo = () => (
   </svg>
 );
 
-const API_BASE = "http://localhost:3456";
+const DASHBOARD_URL = '/dashboard/';
+
+const card: React.CSSProperties = {
+  padding: 'var(--yc-space-6)', backgroundColor: '#fff', borderRadius: 'var(--yc-radius-lg)', border: '1px solid var(--yc-color-border-secondary)'
+};
+const cardTitle: React.CSSProperties = { fontSize: 'var(--yc-font-size-lg)', fontWeight: 'bold', marginBottom: 'var(--yc-space-2)' };
+const cardBody: React.CSSProperties = { color: 'var(--yc-color-text-secondary)', lineHeight: '1.6' };
+const codeChip: React.CSSProperties = { backgroundColor: 'var(--yc-color-bg-layout)', padding: '2px 6px', borderRadius: '4px' };
+const codeBlock: React.CSSProperties = {
+  backgroundColor: 'var(--yc-color-bg-layout)', padding: '16px', borderRadius: '8px', overflowX: 'auto',
+  border: '1px solid var(--yc-color-border-secondary)', fontFamily: 'monospace', fontSize: '14px', lineHeight: '1.5', whiteSpace: 'pre'
+};
 
 function LandingPage() {
   return (
@@ -24,131 +35,134 @@ function LandingPage() {
         }}>
           ✨ The Adaptive UI Engine for SaaS
         </div>
-        
+
         <h1 style={{ fontSize: 'var(--yc-font-size-5xl)', fontWeight: 'var(--yc-font-weight-bold)', lineHeight: 'var(--yc-line-height-tight)', maxWidth: '800px', margin: '0 0 var(--yc-space-6) 0' }}>
           Interfaces that <span style={{ color: 'var(--yc-color-primary)' }}>learn</span> from your users.
         </h1>
-        
-        <p style={{ fontSize: 'var(--yc-font-size-xl)', color: 'var(--yc-color-text-secondary)', maxWidth: '600px', margin: '0 0 var(--yc-space-10) 0', lineHeight: 'var(--yc-line-height-relaxed)' }}>
-          Yoxperience automatically A/B tests and adapts your application's layout in real-time to maximize user engagement using AI-driven telemetry.
+
+        <p style={{ fontSize: 'var(--yc-font-size-xl)', color: 'var(--yc-color-text-secondary)', maxWidth: '680px', margin: '0 0 var(--yc-space-10) 0', lineHeight: 'var(--yc-line-height-relaxed)' }}>
+          YoXperience runs controlled experiments on your UI, personalizes each visitor with AI,
+          attributes real conversions to every variant — and asks <em>you</em> before anything changes site-wide.
         </p>
 
-        <button 
-          onClick={() => { track("LandingCTA", { action: "signin_dashboard", source: "hero" }); window.location.href = 'https://app.yoxperience.com/dashboard/'; }}
-          style={{
-            padding: 'var(--yc-space-3) var(--yc-space-8)', backgroundColor: 'var(--yc-color-primary)', color: '#ffffff', border: 'none',
-            borderRadius: 'var(--yc-radius-md)', fontSize: 'var(--yc-font-size-lg)', fontWeight: 'var(--yc-font-weight-semibold)', cursor: 'pointer', boxShadow: 'var(--yc-shadow-sm)', transition: 'background-color 0.2s ease'
-          }}
-          onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'var(--yc-color-primary-hover)'}
-          onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'var(--yc-color-primary)'}
-        >
-          Sign In to Dashboard
-        </button>
+        <div style={{ display: 'flex', gap: 'var(--yc-space-4)', flexWrap: 'wrap', justifyContent: 'center' }}>
+          <button
+            onClick={() => { track('LandingCTA', { action: 'open_dashboard', source: 'hero' }); window.location.href = DASHBOARD_URL; }}
+            style={{
+              padding: 'var(--yc-space-3) var(--yc-space-8)', backgroundColor: 'var(--yc-color-primary)', color: '#ffffff', border: 'none',
+              borderRadius: 'var(--yc-radius-md)', fontSize: 'var(--yc-font-size-lg)', fontWeight: 'var(--yc-font-weight-semibold)', cursor: 'pointer', boxShadow: 'var(--yc-shadow-sm)'
+            }}
+          >
+            Open the Dashboard
+          </button>
+          <Link
+            to="/docs"
+            onClick={() => track('LandingCTA', { action: 'read_docs', source: 'hero' })}
+            style={{
+              padding: 'var(--yc-space-3) var(--yc-space-8)', backgroundColor: '#fff', color: 'var(--yc-color-text)', border: '1px solid var(--yc-color-border)',
+              borderRadius: 'var(--yc-radius-md)', fontSize: 'var(--yc-font-size-lg)', fontWeight: 'var(--yc-font-weight-semibold)', cursor: 'pointer', textDecoration: 'none'
+            }}
+          >
+            Read the Docs
+          </Link>
+        </div>
+
+        <div style={{ marginTop: 'var(--yc-space-10)', fontSize: 'var(--yc-font-size-sm)', color: 'var(--yc-color-text-tertiary)' }}>
+          Running in production today — powering 7 adaptive slots on <a href="https://bsmeter.ai" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--yc-color-primary)', textDecoration: 'none' }}>bsmeter.ai</a>
+        </div>
       </section>
 
       <section id="features" style={{ padding: 'var(--yc-space-16) var(--yc-space-8)', backgroundColor: 'var(--yc-color-bg-layout)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <h2 style={{ fontSize: 'var(--yc-font-size-3xl)', fontWeight: 'bold', marginBottom: 'var(--yc-space-12)' }}>Why choose Yoxperience?</h2>
+        <h2 style={{ fontSize: 'var(--yc-font-size-3xl)', fontWeight: 'bold', marginBottom: 'var(--yc-space-12)' }}>Everything between an idea and a safe rollout</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 'var(--yc-space-8)', maxWidth: '1000px', width: '100%' }}>
-          <div style={{ padding: 'var(--yc-space-6)', backgroundColor: '#fff', borderRadius: 'var(--yc-radius-lg)', border: '1px solid var(--yc-color-border-secondary)' }}>
-            <h3 style={{ fontSize: 'var(--yc-font-size-lg)', fontWeight: 'bold', marginBottom: 'var(--yc-space-2)' }}>Drop-in React SDK</h3>
-            <p style={{ color: 'var(--yc-color-text-secondary)', lineHeight: '1.6' }}>Wrap your UI components in our &lt;MorphSlot /&gt; and instantly start collecting telemetry. Zero boilerplate required.</p>
+          <div style={card}>
+            <h3 style={cardTitle}>Drop-in SDK, two flavors</h3>
+            <p style={cardBody}>A framework-agnostic <code style={codeChip}>&lt;script&gt;</code> snippet with declarative <code style={codeChip}>data-yx-slot</code> templates, or React components (<code style={codeChip}>&lt;Slot&gt;</code>, <code style={codeChip}>useSlot</code>). Slots self-register with the gateway on first load — no manual setup.</p>
           </div>
-          <div style={{ padding: 'var(--yc-space-6)', backgroundColor: '#fff', borderRadius: 'var(--yc-radius-lg)', border: '1px solid var(--yc-color-border-secondary)' }}>
-            <h3 style={{ fontSize: 'var(--yc-font-size-lg)', fontWeight: 'bold', marginBottom: 'var(--yc-space-2)' }}>AI-Powered Engine</h3>
-            <p style={{ color: 'var(--yc-color-text-secondary)', lineHeight: '1.6' }}>Our backend uses state-of-the-art LLMs to analyze user friction, predicting which layout style fits each user's unique habits.</p>
+          <div style={card}>
+            <h3 style={cardTitle}>Per-user AI personalization</h3>
+            <p style={cardBody}>An always-on worker scores every visitor's behavior (EMA over clicks, hovers, dismissals) and an LLM writes per-user variant recommendations with human-readable rationale — each visitor gets a consistent experience tuned to them.</p>
           </div>
-          <div style={{ padding: 'var(--yc-space-6)', backgroundColor: '#fff', borderRadius: 'var(--yc-radius-lg)', border: '1px solid var(--yc-color-border-secondary)' }}>
-            <h3 style={{ fontSize: 'var(--yc-font-size-lg)', fontWeight: 'bold', marginBottom: 'var(--yc-space-2)' }}>Multi-Tenant Architecture</h3>
-            <p style={{ color: 'var(--yc-color-text-secondary)', lineHeight: '1.6' }}>Securely generate API keys per project. Your user data is rigidly isolated, backed by enterprise-grade Postgres.</p>
+          <div style={card}>
+            <h3 style={cardTitle}>Recommendations you approve</h3>
+            <p style={cardBody}>The engine never flips your site silently. The Recommendations queue shows which variant is winning across all visitors — with sample-size gates so it honestly says “gathering data” instead of guessing — and waits for your click: apply as default, force for everyone, or dismiss.</p>
           </div>
-        </div>
-      </section>
-
-      <section id="use-cases" style={{ padding: 'var(--yc-space-16) var(--yc-space-8)', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <h2 style={{ fontSize: 'var(--yc-font-size-3xl)', fontWeight: 'bold', marginBottom: 'var(--yc-space-12)' }}>Built for modern SaaS</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 'var(--yc-space-8)', maxWidth: '1000px', width: '100%' }}>
-          <div style={{ padding: 'var(--yc-space-8)', backgroundColor: 'var(--yc-color-bg-layout)', borderRadius: 'var(--yc-radius-lg)' }}>
-            <div style={{ color: 'var(--yc-color-primary)', fontWeight: 'bold', marginBottom: 'var(--yc-space-2)' }}>Onboarding Flows</div>
-            <h3 style={{ fontSize: 'var(--yc-font-size-xl)', fontWeight: 'bold', marginBottom: 'var(--yc-space-4)' }}>Adapt to user expertise</h3>
-            <p style={{ color: 'var(--yc-color-text-secondary)', lineHeight: '1.6' }}>Detect when a user is struggling to complete an onboarding tutorial. YoXperience can automatically switch them to a more guided, step-by-step layout with extra tooltips, while power users get the streamlined interface.</p>
+          <div style={card}>
+            <h3 style={cardTitle}>Conversion attribution</h3>
+            <p style={cardBody}>One call — <code style={codeChip}>trackConversion('subscribe')</code> — credits every variant the user was exposed to, deduped per user. Passive UI (score displays, layouts) that never gets clicked finally gets measured by what matters: did people who saw it convert?</p>
           </div>
-          <div style={{ padding: 'var(--yc-space-8)', backgroundColor: 'var(--yc-color-bg-layout)', borderRadius: 'var(--yc-radius-lg)' }}>
-            <div style={{ color: 'var(--yc-color-primary)', fontWeight: 'bold', marginBottom: 'var(--yc-space-2)' }}>E-Commerce Checkout</div>
-            <h3 style={{ fontSize: 'var(--yc-font-size-xl)', fontWeight: 'bold', marginBottom: 'var(--yc-space-4)' }}>Maximize conversions</h3>
-            <p style={{ color: 'var(--yc-color-text-secondary)', lineHeight: '1.6' }}>Serve different checkout page variations based on cart abandonment history. Test a multi-page checkout against a single-page accordion to see which reduces friction for specific user segments.</p>
+          <div style={card}>
+            <h3 style={cardTitle}>Preview any variant, live</h3>
+            <p style={cardBody}>Append <code style={codeChip}>?yxp_preview=slot:variant</code> to any page of your site to see any variant rendered for real — telemetry suppressed so previews never pollute your data. The dashboard links every variant, and can render them inline.</p>
           </div>
-          <div style={{ padding: 'var(--yc-space-8)', backgroundColor: 'var(--yc-color-bg-layout)', borderRadius: 'var(--yc-radius-lg)' }}>
-            <div style={{ color: 'var(--yc-color-primary)', fontWeight: 'bold', marginBottom: 'var(--yc-space-2)' }}>Dashboard Layouts</div>
-            <h3 style={{ fontSize: 'var(--yc-font-size-xl)', fontWeight: 'bold', marginBottom: 'var(--yc-space-4)' }}>Personalize navigation</h3>
-            <p style={{ color: 'var(--yc-color-text-secondary)', lineHeight: '1.6' }}>Some users prefer top navigation, others need a dense left sidebar. Let YoXperience find the optimal layout based on where they hover and click most frequently, improving daily engagement.</p>
-          </div>
-          <div style={{ padding: 'var(--yc-space-8)', backgroundColor: 'var(--yc-color-bg-layout)', borderRadius: 'var(--yc-radius-lg)' }}>
-            <div style={{ color: 'var(--yc-color-primary)', fontWeight: 'bold', marginBottom: 'var(--yc-space-2)' }}>Pricing Pages</div>
-            <h3 style={{ fontSize: 'var(--yc-font-size-xl)', fontWeight: 'bold', marginBottom: 'var(--yc-space-4)' }}>Automated A/B testing</h3>
-            <p style={{ color: 'var(--yc-color-text-secondary)', lineHeight: '1.6' }}>Say goodbye to static A/B tests. Wrap your pricing tiers in a MorphSlot and let our LLM engine continuously optimize the presentation to drive higher plan adoption rates.</p>
+          <div style={card}>
+            <h3 style={cardTitle}>Safety controls at every level</h3>
+            <p style={cardBody}>Per-slot modes (auto / forced / traffic split), a one-click project freeze that pins every slot to its default, and a global kill switch. Every control is reversible from the dashboard, instantly.</p>
           </div>
         </div>
       </section>
 
-      <section id="how-it-works" style={{ padding: 'var(--yc-space-16) var(--yc-space-8)', display: 'flex', flexDirection: 'column', alignItems: 'center', backgroundColor: 'var(--yc-color-bg-layout)' }}>
+      <section id="how-it-works" style={{ padding: 'var(--yc-space-16) var(--yc-space-8)', display: 'flex', flexDirection: 'column', alignItems: 'center', backgroundColor: '#fff' }}>
         <h2 style={{ fontSize: 'var(--yc-font-size-3xl)', fontWeight: 'bold', marginBottom: 'var(--yc-space-12)' }}>How it Works</h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--yc-space-8)', maxWidth: '800px', width: '100%' }}>
-          <div style={{ display: 'flex', gap: 'var(--yc-space-6)', alignItems: 'flex-start' }}>
-            <div style={{ flexShrink: 0, width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'var(--yc-color-primary-bg)', color: 'var(--yc-color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: 'var(--yc-font-size-lg)' }}>1</div>
-            <div>
-              <h3 style={{ fontSize: 'var(--yc-font-size-xl)', fontWeight: 'bold', marginBottom: 'var(--yc-space-2)' }}>Install the SDK</h3>
-              <p style={{ color: 'var(--yc-color-text-secondary)', lineHeight: '1.6' }}>Add the Yoxperience provider to your app and input your API key. Wrap variable UI sections in <code style={{ backgroundColor: 'var(--yc-color-bg-layout)', padding: '2px 6px', borderRadius: '4px' }}>&lt;MorphSlot&gt;</code> components.</p>
+          {[
+            { n: 1, title: 'Install the SDK', body: <>Add the script snippet or the React provider with your publishable key. Wrap adaptive regions in <code style={codeChip}>&lt;Slot&gt;</code> components (or <code style={codeChip}>data-yx-slot</code> markup) — they register themselves with the gateway automatically.</> },
+            { n: 2, title: 'Pick an experiment mode', body: <>Start with an even traffic split to explore fairly, let auto mode personalize per user, or force a variant while you decide. Flip modes any time from the dashboard.</> },
+            { n: 3, title: 'Let the evidence accumulate', body: <>Impressions, engagement, and conversions stream in per variant. The AI analyzes each visitor within seconds; the Recommendations queue aggregates the site-wide picture with honest statistical gates.</> },
+            { n: 4, title: 'Approve the winner', body: <>When a variant proves itself, the dashboard shows the lift and the evidence. You click once to promote it — then auto mode keeps personalizing on top of your new baseline.</> },
+          ].map((s) => (
+            <div key={s.n} style={{ display: 'flex', gap: 'var(--yc-space-6)', alignItems: 'flex-start' }}>
+              <div style={{ flexShrink: 0, width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'var(--yc-color-primary-bg)', color: 'var(--yc-color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: 'var(--yc-font-size-lg)' }}>{s.n}</div>
+              <div>
+                <h3 style={{ fontSize: 'var(--yc-font-size-xl)', fontWeight: 'bold', marginBottom: 'var(--yc-space-2)' }}>{s.title}</h3>
+                <p style={{ color: 'var(--yc-color-text-secondary)', lineHeight: '1.6' }}>{s.body}</p>
+              </div>
             </div>
+          ))}
+        </div>
+      </section>
+
+      <section id="use-cases" style={{ padding: 'var(--yc-space-16) var(--yc-space-8)', backgroundColor: 'var(--yc-color-bg-layout)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <h2 style={{ fontSize: 'var(--yc-font-size-3xl)', fontWeight: 'bold', marginBottom: 'var(--yc-space-12)' }}>Built for modern SaaS</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 'var(--yc-space-8)', maxWidth: '1000px', width: '100%' }}>
+          <div style={{ padding: 'var(--yc-space-8)', backgroundColor: '#fff', borderRadius: 'var(--yc-radius-lg)' }}>
+            <div style={{ color: 'var(--yc-color-primary)', fontWeight: 'bold', marginBottom: 'var(--yc-space-2)' }}>Hero &amp; Messaging</div>
+            <h3 style={{ fontSize: 'var(--yc-font-size-xl)', fontWeight: 'bold', marginBottom: 'var(--yc-space-4)' }}>Find the framing that lands</h3>
+            <p style={cardBody}>Test five headline framings at once with an even split. The Recommendations queue tells you which one actually converts — with the sample sizes to back it — before you commit.</p>
           </div>
-          <div style={{ display: 'flex', gap: 'var(--yc-space-6)', alignItems: 'flex-start' }}>
-            <div style={{ flexShrink: 0, width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'var(--yc-color-primary-bg)', color: 'var(--yc-color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: 'var(--yc-font-size-lg)' }}>2</div>
-            <div>
-              <h3 style={{ fontSize: 'var(--yc-font-size-xl)', fontWeight: 'bold', marginBottom: 'var(--yc-space-2)' }}>Define Variations</h3>
-              <p style={{ color: 'var(--yc-color-text-secondary)', lineHeight: '1.6' }}>Provide multiple design variations for each slot. From simple button color changes to entirely different layout structures.</p>
-            </div>
+          <div style={{ padding: 'var(--yc-space-8)', backgroundColor: '#fff', borderRadius: 'var(--yc-radius-lg)' }}>
+            <div style={{ color: 'var(--yc-color-primary)', fontWeight: 'bold', marginBottom: 'var(--yc-space-2)' }}>Pricing Pages</div>
+            <h3 style={{ fontSize: 'var(--yc-font-size-xl)', fontWeight: 'bold', marginBottom: 'var(--yc-space-4)' }}>CTA copy &amp; plan emphasis</h3>
+            <p style={cardBody}>Which plan wears the “Recommended” badge? Does urgency copy beat value copy? Wrap them in slots, wire <code style={codeChip}>trackConversion</code> to checkout, and let real subscribe clicks decide.</p>
           </div>
-          <div style={{ display: 'flex', gap: 'var(--yc-space-6)', alignItems: 'flex-start' }}>
-            <div style={{ flexShrink: 0, width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'var(--yc-color-primary-bg)', color: 'var(--yc-color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: 'var(--yc-font-size-lg)' }}>3</div>
-            <div>
-              <h3 style={{ fontSize: 'var(--yc-font-size-xl)', fontWeight: 'bold', marginBottom: 'var(--yc-space-2)' }}>Watch it Adapt</h3>
-              <p style={{ color: 'var(--yc-color-text-secondary)', lineHeight: '1.6' }}>Our engine silently collects interaction telemetry (clicks, hovers, scroll depth) and uses an LLM to serve the winning layout for each specific user profile.</p>
-            </div>
+          <div style={{ padding: 'var(--yc-space-8)', backgroundColor: '#fff', borderRadius: 'var(--yc-radius-lg)' }}>
+            <div style={{ color: 'var(--yc-color-primary)', fontWeight: 'bold', marginBottom: 'var(--yc-space-2)' }}>Layouts &amp; Density</div>
+            <h3 style={{ fontSize: 'var(--yc-font-size-xl)', fontWeight: 'bold', marginBottom: 'var(--yc-space-4)' }}>Measure the unclickable</h3>
+            <p style={cardBody}>Panel on the left or right? Gauge or badge? Passive choices never earn clicks — conversion attribution measures them by whether the people who saw each option stayed and converted.</p>
+          </div>
+          <div style={{ padding: 'var(--yc-space-8)', backgroundColor: '#fff', borderRadius: 'var(--yc-radius-lg)' }}>
+            <div style={{ color: 'var(--yc-color-primary)', fontWeight: 'bold', marginBottom: 'var(--yc-space-2)' }}>Onboarding Flows</div>
+            <h3 style={{ fontSize: 'var(--yc-font-size-xl)', fontWeight: 'bold', marginBottom: 'var(--yc-space-4)' }}>Adapt to user expertise</h3>
+            <p style={cardBody}>Auto mode learns per visitor: strugglers get the guided step-by-step variant, power users get the streamlined one — each consistently, on every return visit.</p>
           </div>
         </div>
       </section>
 
-      <section id="pricing" style={{ padding: 'var(--yc-space-16) var(--yc-space-8)', backgroundColor: 'var(--yc-color-bg-layout)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <h2 style={{ fontSize: 'var(--yc-font-size-3xl)', fontWeight: 'bold', marginBottom: 'var(--yc-space-4)' }}>Simple, usage-based pricing</h2>
-        <p style={{ color: 'var(--yc-color-text-secondary)', marginBottom: 'var(--yc-space-12)', fontSize: 'var(--yc-font-size-lg)' }}>Start for free, scale when you need.</p>
-        
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 'var(--yc-space-8)', maxWidth: '900px', width: '100%' }}>
-          {/* Free Tier */}
-          <div style={{ padding: 'var(--yc-space-8)', backgroundColor: '#fff', borderRadius: 'var(--yc-radius-lg)', border: '1px solid var(--yc-color-border-secondary)', display: 'flex', flexDirection: 'column' }}>
-            <h3 style={{ fontSize: 'var(--yc-font-size-xl)', fontWeight: 'bold', marginBottom: 'var(--yc-space-2)' }}>Hobby</h3>
-            <div style={{ fontSize: 'var(--yc-font-size-4xl)', fontWeight: 'bold', marginBottom: 'var(--yc-space-6)' }}>$0<span style={{ fontSize: 'var(--yc-font-size-base)', fontWeight: 'normal', color: 'var(--yc-color-text-secondary)' }}>/mo</span></div>
-            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 var(--yc-space-8) 0', flex: 1, display: 'flex', flexDirection: 'column', gap: 'var(--yc-space-3)' }}>
-              <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>✓ Up to 10,000 events/mo</li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>✓ 3 active slots</li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>✓ Basic analytics</li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>✓ Community support</li>
-            </ul>
-            <button style={{ width: '100%', padding: 'var(--yc-space-3)', backgroundColor: '#fff', color: '#000', border: '1px solid #000', borderRadius: 'var(--yc-radius-md)', fontWeight: 'bold', cursor: 'pointer' }} onClick={() => track("LandingCTA", { action: "get_started", tier: "hobby" })}>Get Started</button>
-          </div>
-
-          {/* Pro Tier */}
-          <div style={{ padding: 'var(--yc-space-8)', backgroundColor: '#000', color: '#fff', borderRadius: 'var(--yc-radius-lg)', border: '1px solid #000', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-            <div style={{ position: 'absolute', top: '-12px', right: '24px', backgroundColor: 'var(--yc-color-primary)', color: '#fff', padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: 'bold' }}>Most Popular</div>
-            <h3 style={{ fontSize: 'var(--yc-font-size-xl)', fontWeight: 'bold', marginBottom: 'var(--yc-space-2)' }}>Pro</h3>
-            <div style={{ fontSize: 'var(--yc-font-size-4xl)', fontWeight: 'bold', marginBottom: 'var(--yc-space-6)' }}>$29<span style={{ fontSize: 'var(--yc-font-size-base)', fontWeight: 'normal', color: 'var(--yc-color-text-secondary)' }}>/mo</span></div>
-            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 var(--yc-space-8) 0', flex: 1, display: 'flex', flexDirection: 'column', gap: 'var(--yc-space-3)' }}>
-              <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>✓ Up to 500,000 events/mo</li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>✓ Unlimited active slots</li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>✓ Advanced LLM predictions</li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>✓ Priority support</li>
-            </ul>
-            <button style={{ width: '100%', padding: 'var(--yc-space-3)', backgroundColor: 'var(--yc-color-primary)', color: '#fff', border: 'none', borderRadius: 'var(--yc-radius-md)', fontWeight: 'bold', cursor: 'pointer' }} onClick={() => track("LandingCTA", { action: "start_trial", tier: "pro" })}>Start Free Trial</button>
-          </div>
-        </div>
+      <section id="pricing" style={{ padding: 'var(--yc-space-16) var(--yc-space-8)', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <h2 style={{ fontSize: 'var(--yc-font-size-3xl)', fontWeight: 'bold', marginBottom: 'var(--yc-space-4)' }}>Free while we build</h2>
+        <p style={{ color: 'var(--yc-color-text-secondary)', marginBottom: 'var(--yc-space-8)', fontSize: 'var(--yc-font-size-lg)', maxWidth: '560px', textAlign: 'center', lineHeight: '1.6' }}>
+          YoXperience is in active development and free to use — full engine, dashboard, and controls.
+          Sign up, create a project, and generate an API key in under a minute.
+        </p>
+        <button
+          onClick={() => { track('LandingCTA', { action: 'open_dashboard', source: 'pricing' }); window.location.href = DASHBOARD_URL; }}
+          style={{
+            padding: 'var(--yc-space-3) var(--yc-space-8)', backgroundColor: 'var(--yc-color-primary)', color: '#fff', border: 'none',
+            borderRadius: 'var(--yc-radius-md)', fontSize: 'var(--yc-font-size-lg)', fontWeight: 'var(--yc-font-weight-semibold)', cursor: 'pointer'
+          }}
+        >
+          Create a free account
+        </button>
       </section>
 
       <footer style={{ backgroundColor: '#fff', padding: 'var(--yc-space-12) var(--yc-space-8)', borderTop: '1px solid var(--yc-color-border-secondary)' }}>
@@ -158,30 +172,22 @@ function LandingPage() {
               <Logo />
               <span style={{ fontSize: 'var(--yc-font-size-lg)', fontWeight: 'var(--yc-font-weight-bold)' }}>Yoxperience</span>
             </Link>
-            <p style={{ color: 'var(--yc-color-text-secondary)', maxWidth: '300px' }}>The adaptive UI engine for modern SaaS applications. Build interfaces that learn.</p>
+            <p style={{ color: 'var(--yc-color-text-secondary)', maxWidth: '300px' }}>The adaptive UI engine for modern SaaS applications. Build interfaces that learn — and stay in control.</p>
           </div>
           <div style={{ display: 'flex', gap: 'var(--yc-space-12)' }}>
             <div>
               <h4 style={{ fontWeight: 'bold', marginBottom: 'var(--yc-space-4)' }}>Product</h4>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--yc-space-2)' }}>
                 <li><a href="/#features" style={{ color: 'var(--yc-color-text-secondary)', textDecoration: 'none' }}>Features</a></li>
-                <li><a href="/#pricing" style={{ color: 'var(--yc-color-text-secondary)', textDecoration: 'none' }}>Pricing</a></li>
+                <li><a href="/#how-it-works" style={{ color: 'var(--yc-color-text-secondary)', textDecoration: 'none' }}>How it Works</a></li>
                 <li><Link to="/docs" style={{ color: 'var(--yc-color-text-secondary)', textDecoration: 'none' }}>Documentation</Link></li>
+                <li><a href={DASHBOARD_URL} style={{ color: 'var(--yc-color-text-secondary)', textDecoration: 'none' }}>Dashboard</a></li>
               </ul>
             </div>
             <div>
-              <h4 style={{ fontWeight: 'bold', marginBottom: 'var(--yc-space-4)' }}>Company</h4>
+              <h4 style={{ fontWeight: 'bold', marginBottom: 'var(--yc-space-4)' }}>Contact</h4>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--yc-space-2)' }}>
-                <li><a href="#" style={{ color: 'var(--yc-color-text-secondary)', textDecoration: 'none' }}>About</a></li>
-                <li><a href="#" style={{ color: 'var(--yc-color-text-secondary)', textDecoration: 'none' }}>Blog</a></li>
-                <li><a href="#" style={{ color: 'var(--yc-color-text-secondary)', textDecoration: 'none' }}>Contact</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 style={{ fontWeight: 'bold', marginBottom: 'var(--yc-space-4)' }}>Legal</h4>
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--yc-space-2)' }}>
-                <li><a href="#" style={{ color: 'var(--yc-color-text-secondary)', textDecoration: 'none' }}>Privacy Policy</a></li>
-                <li><a href="#" style={{ color: 'var(--yc-color-text-secondary)', textDecoration: 'none' }}>Terms of Service</a></li>
+                <li><a href="mailto:support@attune-dating.com" style={{ color: 'var(--yc-color-text-secondary)', textDecoration: 'none' }}>support@attune-dating.com</a></li>
               </ul>
             </div>
           </div>
@@ -195,117 +201,117 @@ function LandingPage() {
 }
 
 function DocumentationPage() {
+  const h2: React.CSSProperties = { fontSize: 'var(--yc-font-size-2xl)', fontWeight: 'bold', marginBottom: 'var(--yc-space-6)', paddingBottom: 'var(--yc-space-2)', borderBottom: '1px solid var(--yc-color-border-secondary)' };
+  const p: React.CSSProperties = { marginBottom: 'var(--yc-space-4)', lineHeight: '1.6' };
+  const navLink: React.CSSProperties = { padding: '8px var(--yc-space-8)', color: 'var(--yc-color-text-secondary)', textDecoration: 'none' };
   return (
     <div style={{ display: 'flex', flex: 1, backgroundColor: '#fff' }}>
       <aside style={{ width: '250px', borderRight: '1px solid var(--yc-color-border-secondary)', padding: 'var(--yc-space-8) 0', backgroundColor: 'var(--yc-color-bg-layout)', position: 'sticky', top: 0, height: 'calc(100vh - 73px)' }}>
         <div style={{ padding: '0 var(--yc-space-8)', marginBottom: 'var(--yc-space-4)', fontWeight: 'bold', fontSize: '14px', textTransform: 'uppercase', color: 'var(--yc-color-text-secondary)' }}>Getting Started</div>
         <nav style={{ display: 'flex', flexDirection: 'column' }}>
-          <a href="#installation" style={{ padding: '8px var(--yc-space-8)', color: 'var(--yc-color-primary)', fontWeight: 'bold', textDecoration: 'none', backgroundColor: 'var(--yc-color-primary-bg)', borderRight: '3px solid var(--yc-color-primary)' }}>Installation</a>
-          <a href="#provider" style={{ padding: '8px var(--yc-space-8)', color: 'var(--yc-color-text-secondary)', textDecoration: 'none' }}>MorphProvider</a>
-          <a href="#slots" style={{ padding: '8px var(--yc-space-8)', color: 'var(--yc-color-text-secondary)', textDecoration: 'none' }}>MorphSlot</a>
-          <a href="#telemetry" style={{ padding: '8px var(--yc-space-8)', color: 'var(--yc-color-text-secondary)', textDecoration: 'none' }}>Telemetry Tracking</a>
-          <a href="#api-reference" style={{ padding: '8px var(--yc-space-8)', color: 'var(--yc-color-text-secondary)', textDecoration: 'none' }}>API Reference</a>
-          <a href="#advanced" style={{ padding: '8px var(--yc-space-8)', color: 'var(--yc-color-text-secondary)', textDecoration: 'none' }}>Advanced Setup</a>
+          <a href="#script-tag" style={{ ...navLink, color: 'var(--yc-color-primary)', fontWeight: 'bold', backgroundColor: 'var(--yc-color-primary-bg)', borderRight: '3px solid var(--yc-color-primary)' }}>Script-tag setup</a>
+          <a href="#react" style={navLink}>React integration</a>
+          <a href="#conversions" style={navLink}>Conversions</a>
+          <a href="#preview" style={navLink}>Preview mode</a>
+          <a href="#controls" style={navLink}>Dashboard &amp; controls</a>
         </nav>
       </aside>
 
       <main style={{ flex: 1, padding: 'var(--yc-space-12) var(--yc-space-16)', maxWidth: '900px' }}>
         <h1 style={{ fontSize: 'var(--yc-font-size-4xl)', fontWeight: 'bold', marginBottom: 'var(--yc-space-4)' }}>Documentation</h1>
-        <p style={{ fontSize: 'var(--yc-font-size-lg)', color: 'var(--yc-color-text-secondary)', marginBottom: 'var(--yc-space-12)', lineHeight: '1.6' }}>Learn how to integrate the YoXperience adaptive UI engine into your React application to start delivering AI-personalized interfaces.</p>
+        <p style={{ fontSize: 'var(--yc-font-size-lg)', color: 'var(--yc-color-text-secondary)', marginBottom: 'var(--yc-space-8)', lineHeight: '1.6' }}>
+          Integrate the YoXperience adaptive UI engine in any web app. Create a project and generate a publishable
+          key (<code style={codeChip}>yxp_pk_…</code>) in the <a href={DASHBOARD_URL} style={{ color: 'var(--yc-color-primary)' }}>Dashboard</a> first.
+        </p>
 
-        <section id="installation" style={{ marginBottom: 'var(--yc-space-16)' }}>
-          <h2 style={{ fontSize: 'var(--yc-font-size-2xl)', fontWeight: 'bold', marginBottom: 'var(--yc-space-6)', paddingBottom: 'var(--yc-space-2)', borderBottom: '1px solid var(--yc-color-border-secondary)' }}>Installation</h2>
-          <p style={{ marginBottom: 'var(--yc-space-4)', lineHeight: '1.6' }}>Install the official React SDK package via npm, yarn, or pnpm.</p>
-          <div style={{ backgroundColor: '#000', color: '#fff', padding: '16px', borderRadius: '8px', fontFamily: 'monospace', marginBottom: 'var(--yc-space-4)' }}>
-            npm install @yoxperience/sdk
-          </div>
+        <section id="script-tag" style={{ marginBottom: 'var(--yc-space-16)' }}>
+          <h2 style={h2}>Script-tag setup (any framework)</h2>
+          <p style={p}>Drop the snippet into your page, then mark up adaptive regions with <code style={codeChip}>data-yx-slot</code> and one <code style={codeChip}>&lt;template&gt;</code> per variant. Slots register themselves with the gateway on first load.</p>
+          <pre style={codeBlock}>{`<script src="/yoxperience.js"
+  data-api-key="yxp_pk_your_key_here"
+  data-user-id="user-123"
+  data-base-url="https://gateway-one-wheat.vercel.app/v1"></script>
+
+<div data-yx-slot="hero-banner" data-yx-default="default">
+  <template data-yx-variant="default">
+    <h1>Default hero</h1>
+  </template>
+  <template data-yx-variant="bold">
+    <h1 style="font-size:3rem">Bold hero</h1>
+  </template>
+  <div class="fallback">Loading…</div>
+</div>`}</pre>
+          <p style={{ ...p, color: 'var(--yc-color-text-secondary)' }}>The snippet resolves each visitor's variant from the gateway, renders the matching template, and streams impression/interaction telemetry automatically (batched every 2s). Omit <code style={codeChip}>data-user-id</code> to track anonymous visitors.</p>
         </section>
 
-        <section id="provider" style={{ marginBottom: 'var(--yc-space-16)' }}>
-          <h2 style={{ fontSize: 'var(--yc-font-size-2xl)', fontWeight: 'bold', marginBottom: 'var(--yc-space-6)', paddingBottom: 'var(--yc-space-2)', borderBottom: '1px solid var(--yc-color-border-secondary)' }}>1. Set up the Provider</h2>
-          <p style={{ marginBottom: 'var(--yc-space-4)', lineHeight: '1.6' }}>Wrap your application with the <code style={{ backgroundColor: 'var(--yc-color-bg-layout)', padding: '2px 6px', borderRadius: '4px' }}>MorphProvider</code>. You will need your project's publishable API key, which you can generate from the <Link to="/dashboard" style={{ color: 'var(--yc-color-primary)' }}>Dashboard</Link>.</p>
-          <pre style={{ backgroundColor: 'var(--yc-color-bg-layout)', padding: '16px', borderRadius: '8px', overflowX: 'auto', border: '1px solid var(--yc-color-border-secondary)', fontFamily: 'monospace', fontSize: '14px', lineHeight: '1.5' }}>
-            <code style={{ color: '#d73a49' }}>import</code> {'{ MorphProvider }'} <code style={{ color: '#d73a49' }}>from</code> <code style={{ color: '#032f62' }}>'@yoxperience/sdk'</code>;{'\n\n'}
-            <code style={{ color: '#d73a49' }}>function</code> <code style={{ color: '#6f42c1' }}>App</code>() {'{\n'}
-            {'  '}<code style={{ color: '#d73a49' }}>return</code> {'(\n'}
-            {'    <'}<code style={{ color: '#22863a' }}>MorphProvider</code> <code style={{ color: '#6f42c1' }}>publishableKey</code>=<code style={{ color: '#032f62' }}>"pk_live_your_api_key_here"</code>{'>\n'}
-            {'      <YourApplication />\n'}
-            {'    </'}<code style={{ color: '#22863a' }}>MorphProvider</code>{'>\n'}
-            {'  );\n'}
-            {'}'}
-          </pre>
+        <section id="react" style={{ marginBottom: 'var(--yc-space-16)' }}>
+          <h2 style={h2}>React integration</h2>
+          <p style={p}>Wrap your app in the provider, then declare slots as component maps. The first variant key doubles as the local fallback.</p>
+          <pre style={codeBlock}>{`import { YoXperienceProvider, Slot, useSlot } from "./lib/yoxperience";
+
+function App() {
+  return (
+    <YoXperienceProvider
+      apiBaseUrl="https://gateway-one-wheat.vercel.app"
+      publishableKey="yxp_pk_your_key_here"
+      userId={currentUser?.id ?? anonymousId}
+    >
+      <YourApplication />
+    </YoXperienceProvider>
+  );
+}
+
+// Component-per-variant:
+<Slot
+  name="hero-headline"
+  variants={{
+    default: HeroDefault,
+    bold: HeroBold,
+    social_proof: HeroSocialProof,
+  }}
+/>
+
+// Or resolve a variant name and render however you like:
+const { slot, trackEvent } = useSlot("pricing-cta", ["default", "urgency", "value"]);
+const variant = slot?.variant ?? "default";
+// trackEvent("click") on interactions you care about`}</pre>
+          <p style={{ ...p, color: 'var(--yc-color-text-secondary)' }}>Variant components receive <code style={codeChip}>{'{ slotKey, variant, trackEvent }'}</code>. Impressions are tracked automatically when a variant resolves.</p>
         </section>
 
-        <section id="slots" style={{ marginBottom: 'var(--yc-space-16)' }}>
-          <h2 style={{ fontSize: 'var(--yc-font-size-2xl)', fontWeight: 'bold', marginBottom: 'var(--yc-space-6)', paddingBottom: 'var(--yc-space-2)', borderBottom: '1px solid var(--yc-color-border-secondary)' }}>2. Define Variations with MorphSlot</h2>
-          <p style={{ marginBottom: 'var(--yc-space-4)', lineHeight: '1.6' }}>Identify a section of your UI that you want to test and adapt. Pass the different React components you want to test to the <code style={{ backgroundColor: 'var(--yc-color-bg-layout)', padding: '2px 6px', borderRadius: '4px' }}>variations</code> prop.</p>
-          <pre style={{ backgroundColor: 'var(--yc-color-bg-layout)', padding: '16px', borderRadius: '8px', overflowX: 'auto', border: '1px solid var(--yc-color-border-secondary)', fontFamily: 'monospace', fontSize: '14px', lineHeight: '1.5' }}>
-            <code style={{ color: '#d73a49' }}>import</code> {'{ MorphSlot }'} <code style={{ color: '#d73a49' }}>from</code> <code style={{ color: '#032f62' }}>'@yoxperience/sdk'</code>;{'\n\n'}
-            <code style={{ color: '#d73a49' }}>function</code> <code style={{ color: '#6f42c1' }}>LandingPageHero</code>() {'{\n'}
-            {'  '}<code style={{ color: '#d73a49' }}>return</code> {'(\n'}
-            {'    <'}<code style={{ color: '#22863a' }}>MorphSlot</code>{'\n'}
-            {'      '}<code style={{ color: '#6f42c1' }}>slotId</code>=<code style={{ color: '#032f62' }}>"landing_page_hero"</code>{'\n'}
-            {'      '}<code style={{ color: '#6f42c1' }}>variations</code>={'{{'}{'\n'}
-            {'        A: <OriginalHeroLayout />,\n'}
-            {'        B: <AggressiveCallToActionLayout />,\n'}
-            {'        C: <SocialProofFocusedLayout />\n'}
-            {'      }'}{'}'}{'\n'}
-            {'    />\n'}
-            {'  );\n'}
-            {'}'}
-          </pre>
-          <p style={{ marginTop: 'var(--yc-space-4)', lineHeight: '1.6', color: 'var(--yc-color-text-secondary)' }}><strong>Note:</strong> The SDK automatically tracks which variation is served to which user session. By default, it will randomly split traffic until the AI engine has enough statistical confidence to begin serving targeted variations based on user telemetry profiles.</p>
+        <section id="conversions" style={{ marginBottom: 'var(--yc-space-16)' }}>
+          <h2 style={h2}>Conversions</h2>
+          <p style={p}>Clicks only measure clickable UI. For everything else — layouts, score displays, copy — credit a downstream conversion. One call credits <em>every</em> slot variant this user was exposed to, deduped per user, attributed server-side.</p>
+          <pre style={codeBlock}>{`import { useConversion } from "./lib/yoxperience";
+
+function CheckoutButton() {
+  const trackConversion = useConversion();
+  return (
+    <button onClick={() => { trackConversion("subscribe_click"); startCheckout(); }}>
+      Subscribe
+    </button>
+  );
+}
+
+// Typical conversion moments: signup, subscribe, install,
+// core-action-completed (e.g. "analysis_completed")`}</pre>
         </section>
 
-        <section id="telemetry" style={{ marginBottom: 'var(--yc-space-16)' }}>
-          <h2 style={{ fontSize: 'var(--yc-font-size-2xl)', fontWeight: 'bold', marginBottom: 'var(--yc-space-6)', paddingBottom: 'var(--yc-space-2)', borderBottom: '1px solid var(--yc-color-border-secondary)' }}>3. Telemetry Tracking</h2>
-          <p style={{ marginBottom: 'var(--yc-space-4)', lineHeight: '1.6' }}>YoXperience automatically instruments wrapped variations for standard interactions (click, hover, visibility). If you need to manually push a business metric (like a successful checkout or signup), use the <code style={{ backgroundColor: 'var(--yc-color-bg-layout)', padding: '2px 6px', borderRadius: '4px' }}>useMorphContext</code> hook.</p>
-          <pre style={{ backgroundColor: 'var(--yc-color-bg-layout)', padding: '16px', borderRadius: '8px', overflowX: 'auto', border: '1px solid var(--yc-color-border-secondary)', fontFamily: 'monospace', fontSize: '14px', lineHeight: '1.5' }}>
-            <code style={{ color: '#d73a49' }}>import</code> {'{ useMorphContext }'} <code style={{ color: '#d73a49' }}>from</code> <code style={{ color: '#032f62' }}>'@yoxperience/sdk'</code>;{'\n\n'}
-            <code style={{ color: '#d73a49' }}>function</code> <code style={{ color: '#6f42c1' }}>SignupForm</code>() {'{\n'}
-            {'  '}<code style={{ color: '#d73a49' }}>const</code> {'{ trackEvent } = '}<code style={{ color: '#6f42c1' }}>useMorphContext</code>{'();\n\n'}
-            {'  '}<code style={{ color: '#d73a49' }}>const</code> <code style={{ color: '#6f42c1' }}>handleSignup</code> = <code style={{ color: '#d73a49' }}>async</code> {'() => {\n'}
-            {'    '}<code style={{ color: '#6a737d' }}>// ... your signup logic ...</code>{'\n'}
-            {'    trackEvent('}<code style={{ color: '#032f62' }}>"signup_completed"</code>{', { value: 1 });\n'}
-            {'  };\n'}
-            {'}'}
-          </pre>
+        <section id="preview" style={{ marginBottom: 'var(--yc-space-16)' }}>
+          <h2 style={h2}>Preview mode</h2>
+          <p style={p}>See any variant on your live site without affecting real visitors or data — append the preview parameter:</p>
+          <pre style={codeBlock}>{`https://yourapp.com/?yxp_preview=hero-headline:bold
+https://yourapp.com/pricing?yxp_preview=pricing-cta:urgency,plan-highlight:basic`}</pre>
+          <p style={{ ...p, color: 'var(--yc-color-text-secondary)' }}>Preview mode forces the named variants for your browser only, shows a banner with an exit link, and suppresses all telemetry and conversions. Set your Site URL on the dashboard's Slots page and every variant becomes a one-click preview link.</p>
         </section>
 
-        <section id="api-reference" style={{ marginBottom: 'var(--yc-space-16)' }}>
-          <h2 style={{ fontSize: 'var(--yc-font-size-2xl)', fontWeight: 'bold', marginBottom: 'var(--yc-space-6)', paddingBottom: 'var(--yc-space-2)', borderBottom: '1px solid var(--yc-color-border-secondary)' }}>API Reference</h2>
-          
-          <h3 style={{ fontSize: 'var(--yc-font-size-xl)', fontWeight: 'bold', marginBottom: 'var(--yc-space-2)' }}><code>&lt;MorphProvider&gt;</code></h3>
-          <p style={{ marginBottom: 'var(--yc-space-4)', lineHeight: '1.6' }}>The root context provider for the SDK. Must wrap any components that use <code>&lt;MorphSlot&gt;</code> or <code>useMorphContext</code>.</p>
-          <ul style={{ lineHeight: '1.6', marginBottom: 'var(--yc-space-6)', paddingLeft: 'var(--yc-space-6)' }}>
-            <li><code>publishableKey</code> (string, required): Your project's API key.</li>
-            <li><code>endpoint</code> (string, optional): Override the default telemetry ingestion URL.</li>
-            <li><code>userId</code> (string, optional): A unique identifier for the current user. If omitted, the SDK generates a random anonymous session ID.</li>
+        <section id="controls" style={{ marginBottom: 'var(--yc-space-16)' }}>
+          <h2 style={h2}>Dashboard &amp; controls</h2>
+          <p style={p}>Everything the engine does is visible and reversible from the <a href={DASHBOARD_URL} style={{ color: 'var(--yc-color-primary)' }}>Dashboard</a>:</p>
+          <ul style={{ lineHeight: '1.8', marginBottom: 'var(--yc-space-6)', paddingLeft: 'var(--yc-space-6)' }}>
+            <li><strong>Slots</strong> — per-slot mode: <code style={codeChip}>auto</code> (AI personalizes per user), <code style={codeChip}>forced</code> (everyone sees one variant), <code style={codeChip}>split</code> (fixed percentages for fair A/B exploration). Plus a project-wide freeze that pins every slot to its default.</li>
+            <li><strong>Analytics</strong> — live event stream, per-slot engagement, and AI Insights: the LLM's per-user recommendations with written rationale.</li>
+            <li><strong>Recommendations</strong> — the site-level verdict per slot: winning variant, conversion rates, lift, and confidence — gated by sample-size thresholds so early noise never masquerades as signal. Apply as default, force for everyone, or dismiss. Preview any variant inline before deciding.</li>
           </ul>
-
-          <h3 style={{ fontSize: 'var(--yc-font-size-xl)', fontWeight: 'bold', marginBottom: 'var(--yc-space-2)' }}><code>&lt;MorphSlot&gt;</code></h3>
-          <p style={{ marginBottom: 'var(--yc-space-4)', lineHeight: '1.6' }}>Defines a region of adaptive UI.</p>
-          <ul style={{ lineHeight: '1.6', marginBottom: 'var(--yc-space-6)', paddingLeft: 'var(--yc-space-6)' }}>
-            <li><code>slotId</code> (string, required): A unique string identifying this layout region (e.g., "checkout_sidebar").</li>
-            <li><code>variations</code> (Record&lt;string, ReactNode&gt;, required): An object mapping variation names to their React components.</li>
-            <li><code>fallback</code> (string, optional): The key of the variation to render while waiting for the LLM resolution. Defaults to the first key in <code>variations</code>.</li>
-          </ul>
-        </section>
-
-        <section id="advanced" style={{ marginBottom: 'var(--yc-space-16)' }}>
-          <h2 style={{ fontSize: 'var(--yc-font-size-2xl)', fontWeight: 'bold', marginBottom: 'var(--yc-space-6)', paddingBottom: 'var(--yc-space-2)', borderBottom: '1px solid var(--yc-color-border-secondary)' }}>Advanced Configuration</h2>
-          <p style={{ marginBottom: 'var(--yc-space-4)', lineHeight: '1.6' }}>You can fine-tune how telemetry is buffered before it hits the backend to save on network requests. By default, events are batched and sent every 5 seconds or when the user navigates away.</p>
-          <pre style={{ backgroundColor: 'var(--yc-color-bg-layout)', padding: '16px', borderRadius: '8px', overflowX: 'auto', border: '1px solid var(--yc-color-border-secondary)', fontFamily: 'monospace', fontSize: '14px', lineHeight: '1.5' }}>
-            {'<'}<code style={{ color: '#22863a' }}>MorphProvider</code>{'\n'}
-            {'  '}<code style={{ color: '#6f42c1' }}>publishableKey</code>=<code style={{ color: '#032f62' }}>"pk_live_your_api_key_here"</code>{'\n'}
-            {'  '}<code style={{ color: '#6f42c1' }}>telemetryConfig</code>={'{{\n'}
-            {'    batchIntervalMs: 2000, '}<code style={{ color: '#6a737d' }}>// Send events every 2 seconds</code>{'\n'}
-            {'    maxBufferSize: 50, '}<code style={{ color: '#6a737d' }}>// Or when 50 events are queued</code>{'\n'}
-            {'  }}\n'}
-            {'>\n'}
-            {'  <YourApplication />\n'}
-            {'</'}<code style={{ color: '#22863a' }}>MorphProvider</code>{'>'}
-          </pre>
         </section>
       </main>
     </div>
@@ -322,7 +328,6 @@ export function App() {
       color: 'var(--yc-color-text)',
       backgroundColor: 'var(--yc-color-bg-layout)',
     }}>
-      {/* Global Header */}
       <header style={{
         padding: 'var(--yc-space-4) var(--yc-space-8)',
         display: 'flex',
@@ -340,9 +345,8 @@ export function App() {
         <nav style={{ display: 'flex', gap: 'var(--yc-space-5)', alignItems: 'center' }}>
           <a href="/#how-it-works" style={{ color: 'var(--yc-color-text-secondary)', textDecoration: 'none', fontWeight: 'var(--yc-font-weight-medium)' }}>How it Works</a>
           <a href="/#features" style={{ color: 'var(--yc-color-text-secondary)', textDecoration: 'none', fontWeight: 'var(--yc-font-weight-medium)' }}>Features</a>
-          <a href="/#pricing" style={{ color: 'var(--yc-color-text-secondary)', textDecoration: 'none', fontWeight: 'var(--yc-font-weight-medium)' }}>Pricing</a>
           <Link to="/docs" style={{ color: 'var(--yc-color-text-secondary)', textDecoration: 'none', fontWeight: 'var(--yc-font-weight-medium)' }}>Docs</Link>
-          <a href="https://app.yoxperience.com/dashboard/" onClick={() => track("LandingCTA", { action: "signin", source: "header" })} style={{
+          <a href={DASHBOARD_URL} onClick={() => track('LandingCTA', { action: 'signin', source: 'header' })} style={{
             backgroundColor: 'var(--yc-color-primary)',
             padding: '8px 16px',
             borderRadius: '6px',
