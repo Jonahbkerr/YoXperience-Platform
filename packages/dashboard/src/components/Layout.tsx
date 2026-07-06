@@ -49,15 +49,24 @@ export function Layout() {
   );
   const [showProjectDropdown, setShowProjectDropdown] = useState(false);
 
-  useEffect(() => {
-    api<{ projects: ProjectSummary[] }>("/api/projects")
-      .then((res) => {
-        setProjects(res.projects);
-        if (res.projects.length > 0 && !selectedProject) {
-          setSelectedProject(res.projects[0]);
+  const refreshProjects = async () => {
+    try {
+      const res = await api<{ projects: ProjectSummary[] }>("/api/projects");
+      setProjects(res.projects);
+      setSelectedProject((current) => {
+        if (current) {
+          // Keep the selection but pick up renamed/updated fields
+          return res.projects.find((p) => p.id === current.id) ?? res.projects[0] ?? null;
         }
-      })
-      .catch(() => {});
+        return res.projects[0] ?? null;
+      });
+    } catch {
+      /* ignore — nav stays usable with the stale list */
+    }
+  };
+
+  useEffect(() => {
+    refreshProjects();
   }, []);
 
   const handleLogout = async () => {
@@ -217,7 +226,7 @@ export function Layout() {
             style={({ isActive }) => (isActive ? navItemActive : navItemBase)}
           >
             <Key size={16} />
-            API Keys
+            Projects
           </NavLink>
           <NavLink
             to="/analytics"
@@ -306,7 +315,7 @@ export function Layout() {
           maxWidth: 1000,
         }}
       >
-        <Outlet context={{ selectedProject, projects }} />
+        <Outlet context={{ selectedProject, projects, refreshProjects }} />
       </main>
     </div>
   );

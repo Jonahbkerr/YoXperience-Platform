@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import { Plus, Layers, Key, X } from "lucide-react";
 import { api } from "../lib/api-client.js";
 
@@ -56,6 +56,9 @@ const labelStyle: React.CSSProperties = {
 
 export default function Projects() {
   const navigate = useNavigate();
+  const { refreshProjects } = useOutletContext<{
+    refreshProjects?: () => Promise<void>;
+  }>() ?? {};
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -93,6 +96,9 @@ export default function Projects() {
       setCoreApiUrl("");
       setShowCreate(false);
       await fetchProjects();
+      // Sidebar keeps its own copy of the project list — sync it so the
+      // new project is selectable without a re-login
+      await refreshProjects?.();
     } catch (err: any) {
       setCreateError(err.message);
     } finally {

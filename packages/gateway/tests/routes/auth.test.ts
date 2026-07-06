@@ -28,12 +28,14 @@ vi.mock("../../src/middleware/auth.js", () => ({
 }));
 
 import express from "express";
+import cookieParser from "cookie-parser";
 import authRouter from "../../src/routes/auth.js";
 import * as authService from "../../src/services/auth-service.js";
 
 function createApp() {
   const app = express();
   app.use(express.json());
+  app.use(cookieParser());
   app.use("/auth", authRouter);
   return app;
 }
@@ -162,6 +164,45 @@ describe("Auth Routes", () => {
       });
       // cookie is empty by default in test, need to set it
       expect(res.status).toBe(401); // no cookie set
+    });
+
+    it("refreshes from the cookie alone (hard-reload session restore)", async () => {
+      vi.mocked(authService.refresh).mockResolvedValue({
+        accessToken: "new-access",
+        refreshToken: "new-refresh",
+      });
+
+      const app = createApp();
+      const { createServer } = require("node:http");
+      const server = createServer(app);
+      const res = await new Promise<{ status: number; body: any }>(
+        (resolve, reject) => {
+          server.listen(0, () => {
+            const addr = server.address() as any;
+            fetch(`http://localhost:${addr.port}/auth/refresh`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Cookie: "yxp_refresh=raw-refresh-token",
+              },
+              // No access token in the body — the SPA has nothing after reload
+              body: JSON.stringify({}),
+            })
+              .then(async (r) =>
+                resolve({ status: r.status, body: await r.json() })
+              )
+              .catch(reject)
+              .finally(() => server.close());
+          });
+        }
+      );
+
+      expect(res.status).toBe(200);
+      expect(res.body.accessToken).toBe("new-access");
+      expect(authService.refresh).toHaveBeenCalledWith(
+        "raw-refresh-token",
+        undefined
+      );
     });
   });
 

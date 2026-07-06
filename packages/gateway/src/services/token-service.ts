@@ -42,6 +42,26 @@ export async function createRefreshToken(userId: string): Promise<string> {
   return raw;
 }
 
+/**
+ * Resolve which user a live refresh token belongs to, without needing an
+ * access token. Used for session restore after a hard page reload, where
+ * the httpOnly cookie is the only credential the client still has.
+ */
+export async function findUserIdForRefreshToken(
+  oldRaw: string
+): Promise<string | null> {
+  const oldHash = hashToken(oldRaw);
+  const [existing] = await db
+    .select()
+    .from(refreshTokens)
+    .where(
+      and(eq(refreshTokens.tokenHash, oldHash), isNull(refreshTokens.revokedAt))
+    )
+    .limit(1);
+  if (!existing || existing.expiresAt < new Date()) return null;
+  return existing.userId;
+}
+
 export async function rotateRefreshToken(
   oldRaw: string,
   userId: string

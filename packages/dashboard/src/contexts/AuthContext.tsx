@@ -63,13 +63,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async function tryRefresh() {
       try {
         const currentToken = getAccessToken();
-        // Skip refresh if there's no stored token and no reason to expect a session
-        if (!currentToken) {
-          if (!cancelled) {
-            setState({ user: null, org: null, role: null, loading: false });
-          }
-          return;
-        }
+        // Always attempt the refresh: the access token lives only in memory,
+        // so after a hard reload it is null even when the httpOnly
+        // yxp_refresh cookie still holds a valid session. The refresh
+        // endpoint authenticates via that cookie; a 401 lands in the catch.
         const res = await api<{ accessToken: string }>("/auth/refresh", {
           method: "POST",
           body: JSON.stringify({ accessToken: currentToken ?? "" }),

@@ -72,14 +72,17 @@ router.post("/login", async (req: Request, res: Response) => {
 
 router.post("/refresh", async (req: Request, res: Response) => {
   const oldRefresh = req.cookies?.[REFRESH_COOKIE];
-  const oldAccess = req.headers.authorization?.slice(7) ?? req.body.accessToken;
+  // Access token is optional: after a hard reload the httpOnly cookie is
+  // the only credential the SPA still holds. When present it must match.
+  const oldAccess: string | undefined =
+    req.headers.authorization?.slice(7) ?? req.body?.accessToken ?? undefined;
 
-  if (!oldRefresh || !oldAccess) {
-    res.status(401).json({ error: "Missing refresh or access token" });
+  if (!oldRefresh) {
+    res.status(401).json({ error: "Missing refresh token" });
     return;
   }
 
-  const result = await refresh(oldRefresh, oldAccess);
+  const result = await refresh(oldRefresh, oldAccess || undefined);
   if (!result) {
     res.clearCookie(REFRESH_COOKIE, { path: "/auth" });
     res.status(401).json({ error: "Invalid or expired refresh token" });

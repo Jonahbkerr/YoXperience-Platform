@@ -10,6 +10,7 @@ import {
   signAccessToken,
   createRefreshToken,
   rotateRefreshToken,
+  findUserIdForRefreshToken,
   revokeRefreshToken,
   verifyAccessToken,
   type AccessTokenPayload,
@@ -145,35 +146,54 @@ export async function login(input: LoginInput): Promise<AuthResult> {
 
 export async function refresh(
   oldRefreshToken: string,
-  oldAccessToken: string
+  oldAccessToken?: string
 ): Promise<{ accessToken: string; refreshToken: string } | null> {
-  // Decode (don't verify — it may be expired) to get userId
-  let payload: AccessTokenPayload;
-  try {
-    payload = verifyAccessToken(oldAccessToken);
-  } catch {
-    // Try decoding without verification for expired tokens
-    const decoded = JSON.parse(
-      Buffer.from(oldAccessToken.split(".")[1], "base64url").toString()
-    ) as AccessTokenPayload;
-    payload = decoded;
+  // The refresh token row in the DB is the source of truth for identity.
+  // (The old access token, when present, is only a cross-check — after a
+  // hard page reload the client has nothing but the httpOnly cookie.)
+  const tokenUserId = await findUserIdForRefreshToken(oldRefreshToken);
+  if (!tokenUserId) return null;
+
+  if (oldAccessToken) {
+    // If an access token is supplied it must agree with the refresh token.
+    try {
+      let payload: AccessTokenPayload;
+      try {
+        payload = verifyAccessToken(oldAccessToken);
+      } catch {
+        payload = JSON.parse(
+          Buffer.from(oldAccessToken.split(".")[1], "base64url").toString()
+        ) as AccessTokenPayload;
+      }
+      if (payload.userId !== tokenUserId) return null;
+    } catch {
+      return null; // malformed access token
+    }
   }
 
-  const newRefresh = await rotateRefreshToken(oldRefreshToken, payload.userId);
+  const newRefresh = await rotateRefreshToken(oldRefreshToken, tokenUserId);
   if (!newRefresh) return null;
 
-  // Re-fetch membership to get fresh role
+  const [user] = await db
+    .select({ id: users.id, email: users.email })
+    .from(users)
+    .where(eq(users.id, tokenUserId))
+    .limit(1);
+  if (!user) return null;
+
+  // Re-fetch membership to get fresh org/role
   const [membership] = await db
     .select()
     .from(orgMemberships)
-    .where(eq(orgMemberships.userId, payload.userId))
+    .where(eq(orgMemberships.userId, tokenUserId))
     .limit(1);
+  if (!membership) return null;
 
   const newAccess = signAccessToken({
-    userId: payload.userId,
-    email: payload.email,
-    orgId: membership?.orgId ?? payload.orgId,
-    role: membership?.role ?? payload.role,
+    userId: user.id,
+    email: user.email,
+    orgId: membership.orgId,
+    role: membership.role,
   });
 
   return { accessToken: newAccess, refreshToken: newRefresh };
