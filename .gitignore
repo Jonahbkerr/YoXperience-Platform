@@ -19,3 +19,4 @@ packages/gateway/src/worker/_*.ts
 packages/gateway/src/worker/query2.ts
 packages/gateway/src/worker/query_telemetry.ts
 test-results/
+.gstack/
