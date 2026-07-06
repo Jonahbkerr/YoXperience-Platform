@@ -8,6 +8,7 @@ import Projects from "./pages/Projects.js";
 import ProjectDetail from "./pages/ProjectDetail.js";
 import Slots from "./pages/Slots.js";
 import Analytics from "./pages/Analytics.js";
+import Recommendations from "./pages/Recommendations.js";
 import TeamMembers from "./pages/TeamMembers.js";
 import OrgSettings from "./pages/Settings.js";
 import MVPApp from "./mvp/MVPApp.js";
@@ -47,6 +48,7 @@ export default function App() {
         <Route path="projects/:projectId" element={<ProjectDetail />} />
         <Route path="slots" element={<Slots />} />
         <Route path="analytics" element={<Analytics />} />
+        <Route path="recommendations" element={<Recommendations />} />
         <Route path="team" element={<TeamMembers />} />
         <Route path="settings" element={<OrgSettings />} />
       </Route>

@@ -4,6 +4,7 @@ import {
   Layers,
   Key,
   BarChart3,
+  Sparkles,
   Users,
   Settings,
   LogOut,
@@ -234,6 +235,13 @@ export function Layout() {
           >
             <BarChart3 size={16} />
             Analytics
+          </NavLink>
+          <NavLink
+            to="/recommendations"
+            style={({ isActive }) => (isActive ? navItemActive : navItemBase)}
+          >
+            <Sparkles size={16} />
+            Recommendations
           </NavLink>
 
           <div
