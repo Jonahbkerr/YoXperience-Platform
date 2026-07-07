@@ -96,8 +96,8 @@ export default function Recommendations() {
   const [toast, setToast] = useState<string | null>(null);
   // Public site URL (set on the Slots page) — powers per-variant previews
   const [siteUrl, setSiteUrl] = useState<string>("");
-  // Which variant is being previewed inline: "slotKey::variant" or null
-  const [inlinePreview, setInlinePreview] = useState<string | null>(null);
+  // Which variants are open for side-by-side comparison: set of "slotKey::variant"
+  const [openPreviews, setOpenPreviews] = useState<Set<string>>(new Set());
 
   const load = () => {
     if (!selectedProject) {
@@ -114,7 +114,7 @@ export default function Recommendations() {
   };
 
   useEffect(() => {
-    setInlinePreview(null);
+    setOpenPreviews(new Set());
     load();
   }, [selectedProject?.id]);
 
@@ -123,6 +123,23 @@ export default function Recommendations() {
     siteUrl
       ? `${siteUrl}${siteUrl.includes("?") ? "&" : "?"}yxp_preview=${encodeURIComponent(slotKey)}:${encodeURIComponent(variant)}`
       : null;
+
+  // Toggle a single variant in/out of the comparison grid.
+  const togglePreview = (key: string) =>
+    setOpenPreviews((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
+  // Close every open preview for one slot.
+  const clearSlotPreviews = (slotKey: string) =>
+    setOpenPreviews((prev) => {
+      const next = new Set<string>();
+      for (const k of prev) if (!k.startsWith(`${slotKey}::`)) next.add(k);
+      return next;
+    });
 
   const applyDefault = async (rec: Recommendation) => {
     if (!selectedProject || !rec.slotId || !rec.winner) return;
@@ -256,65 +273,108 @@ export default function Recommendations() {
 
                   <p style={{ fontSize: "var(--yc-font-size-sm)", lineHeight: 1.5, marginBottom: 12 }}>{rec.reason}</p>
 
-                  {/* Per-variant engagement bars, with live preview links */}
+                  {/* Per-variant engagement bars — toggle any to add to the comparison grid below */}
                   <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: rec.status === "recommend" ? 14 : 0 }}>
                     {rec.variants.map((v) => {
                       const url = previewUrl(rec.slotKey, v.variant);
                       const previewKey = `${rec.slotKey}::${v.variant}`;
-                      const isOpen = inlinePreview === previewKey;
+                      const isOpen = openPreviews.has(previewKey);
                       return (
-                        <div key={v.variant}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: "var(--yc-font-size-xs)" }}>
-                            <span style={{ minWidth: 130, fontFamily: "var(--yc-font-mono)", color: v.isWinner ? "var(--yc-color-success)" : "var(--yc-color-text-secondary)", fontWeight: v.isWinner ? 700 : 400 }}>
-                              {url ? (
-                                <a
-                                  href={url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  title={`Open "${v.variant}" on your live site`}
-                                  style={{ color: "inherit", textDecoration: "underline", textDecorationStyle: "dotted" }}
-                                >
-                                  {v.variant}
-                                </a>
-                              ) : (
-                                v.variant
-                              )}
-                              {v.isCurrentDefault ? " ●" : ""}
-                              {v.isWinner ? " ★" : ""}
-                            </span>
-                            <div style={{ flex: 1, height: 6, background: "var(--yc-color-fill)", borderRadius: 3, overflow: "hidden" }}>
-                              <div style={{ width: `${(v.impressions / maxImp) * 100}%`, height: "100%", background: v.isWinner ? "var(--yc-color-success)" : "var(--yc-color-primary)", opacity: v.eligible ? 1 : 0.4 }} />
-                            </div>
-                            <span style={{ minWidth: 96, textAlign: "right", color: "var(--yc-color-text-tertiary)" }}>
-                              {v.impressions} imp · {v.impressions > 0 ? pct(v.rate) : "—"}
-                            </span>
-                            {url && (
-                              <button
-                                onClick={() => setInlinePreview(isOpen ? null : previewKey)}
-                                style={{
-                                  border: "1px solid var(--yc-color-border)",
-                                  background: isOpen ? "var(--yc-color-primary)" : "transparent",
-                                  color: isOpen ? "#fff" : "var(--yc-color-text-secondary)",
-                                  borderRadius: "var(--yc-radius-md)",
-                                  padding: "2px 8px",
-                                  fontSize: "var(--yc-font-size-xs)",
-                                  cursor: "pointer",
-                                  flexShrink: 0,
-                                }}
-                                title={isOpen ? "Close inline preview" : "Render this variant right here"}
-                                data-testid={`inline-preview-${rec.slotKey}-${v.variant}`}
+                        <div key={v.variant} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: "var(--yc-font-size-xs)" }}>
+                          <span style={{ minWidth: 130, fontFamily: "var(--yc-font-mono)", color: v.isWinner ? "var(--yc-color-success)" : "var(--yc-color-text-secondary)", fontWeight: v.isWinner ? 700 : 400 }}>
+                            {url ? (
+                              <a
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title={`Open "${v.variant}" on your live site`}
+                                style={{ color: "inherit", textDecoration: "underline", textDecorationStyle: "dotted" }}
                               >
-                                {isOpen ? "✕ close" : "👁 view"}
-                              </button>
+                                {v.variant}
+                              </a>
+                            ) : (
+                              v.variant
                             )}
+                            {v.isCurrentDefault ? " ●" : ""}
+                            {v.isWinner ? " ★" : ""}
+                          </span>
+                          <div style={{ flex: 1, height: 6, background: "var(--yc-color-fill)", borderRadius: 3, overflow: "hidden" }}>
+                            <div style={{ width: `${(v.impressions / maxImp) * 100}%`, height: "100%", background: v.isWinner ? "var(--yc-color-success)" : "var(--yc-color-primary)", opacity: v.eligible ? 1 : 0.4 }} />
                           </div>
-                          {isOpen && url && (
-                            <div style={{ margin: "8px 0 4px", border: "1px solid var(--yc-color-border)", borderRadius: "var(--yc-radius-lg)", overflow: "hidden" }}>
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 10px", background: "var(--yc-color-fill)", fontSize: "var(--yc-font-size-xs)", color: "var(--yc-color-text-tertiary)" }}>
-                                <span>Live render of “{v.variant}” — your real site with this variant forced (no telemetry recorded)</span>
-                                <a href={url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--yc-color-primary)" }}>
-                                  open full page ↗
-                                </a>
+                          <span style={{ minWidth: 96, textAlign: "right", color: "var(--yc-color-text-tertiary)" }}>
+                            {v.impressions} imp · {v.impressions > 0 ? pct(v.rate) : "—"}
+                          </span>
+                          {url && (
+                            <button
+                              onClick={() => togglePreview(previewKey)}
+                              style={{
+                                border: "1px solid var(--yc-color-border)",
+                                background: isOpen ? "var(--yc-color-primary)" : "transparent",
+                                color: isOpen ? "#fff" : "var(--yc-color-text-secondary)",
+                                borderRadius: "var(--yc-radius-md)",
+                                padding: "2px 8px",
+                                fontSize: "var(--yc-font-size-xs)",
+                                cursor: "pointer",
+                                flexShrink: 0,
+                              }}
+                              title={isOpen ? "Remove from comparison" : "Add this variant to the side-by-side comparison"}
+                              data-testid={`inline-preview-${rec.slotKey}-${v.variant}`}
+                            >
+                              {isOpen ? "✓ comparing" : "👁 compare"}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Side-by-side comparison grid — every variant you toggled, rendered together */}
+                  {(() => {
+                    const openVariants = rec.variants
+                      .map((v) => ({ v, url: previewUrl(rec.slotKey, v.variant) }))
+                      .filter((x): x is { v: VariantBreakdown; url: string } =>
+                        !!x.url && openPreviews.has(`${rec.slotKey}::${x.v.variant}`)
+                      );
+                    if (openVariants.length === 0) return null;
+                    return (
+                      <div style={{ marginTop: 12, marginBottom: rec.status === "recommend" ? 14 : 0 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                          <span style={{ fontSize: "var(--yc-font-size-xs)", color: "var(--yc-color-text-tertiary)" }}>
+                            Comparing {openVariants.length} variant{openVariants.length > 1 ? "s" : ""} side by side — preview mode, nothing recorded
+                          </span>
+                          <button onClick={() => clearSlotPreviews(rec.slotKey)} style={{ ...btnOutline, padding: "2px 10px", fontSize: "var(--yc-font-size-xs)" }}>
+                            Clear
+                          </button>
+                        </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 10 }}>
+                          {openVariants.map(({ v, url }) => (
+                            <div
+                              key={v.variant}
+                              style={{
+                                border: v.isWinner ? "1px solid var(--yc-color-success)" : "1px solid var(--yc-color-border)",
+                                borderRadius: "var(--yc-radius-lg)",
+                                overflow: "hidden",
+                                display: "flex",
+                                flexDirection: "column",
+                              }}
+                            >
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "4px 10px", background: "var(--yc-color-fill)", fontSize: "var(--yc-font-size-xs)" }}>
+                                <span
+                                  title={v.variant}
+                                  style={{ fontFamily: "var(--yc-font-mono)", fontWeight: v.isWinner ? 700 : 500, color: v.isWinner ? "var(--yc-color-success)" : "var(--yc-color-text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                                >
+                                  {v.variant}{v.isCurrentDefault ? " ●" : ""}{v.isWinner ? " ★" : ""} · {v.impressions > 0 ? pct(v.rate) : "—"}
+                                </span>
+                                <span style={{ display: "flex", gap: 8, flexShrink: 0, alignItems: "center" }}>
+                                  <a href={url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--yc-color-primary)" }}>open ↗</a>
+                                  <button
+                                    onClick={() => togglePreview(`${rec.slotKey}::${v.variant}`)}
+                                    title="Remove from comparison"
+                                    style={{ border: "none", background: "transparent", color: "var(--yc-color-text-tertiary)", cursor: "pointer", padding: 0, fontSize: "var(--yc-font-size-xs)" }}
+                                  >
+                                    ✕
+                                  </button>
+                                </span>
                               </div>
                               <iframe
                                 src={url}
@@ -324,11 +384,11 @@ export default function Recommendations() {
                                 loading="lazy"
                               />
                             </div>
-                          )}
+                          ))}
                         </div>
-                      );
-                    })}
-                  </div>
+                      </div>
+                    );
+                  })()}
 
                   {rec.aiRationale && (
                     <div style={{ fontSize: "var(--yc-font-size-xs)", color: "var(--yc-color-text-tertiary)", fontStyle: "italic", marginTop: 8, borderLeft: "2px solid var(--yc-color-border-secondary)", paddingLeft: 8 }}>
@@ -355,8 +415,8 @@ export default function Recommendations() {
           </div>
 
           <p style={{ fontSize: "var(--yc-font-size-xs)", color: "var(--yc-color-text-tertiary)", marginTop: "var(--yc-space-5)", lineHeight: 1.5 }}>
-            ● = current default &nbsp; ★ = top performer. Click a variant name to open it on your live site, or 👁 view to
-            render it right here — both use preview mode, so nothing is recorded. "Make the default" sets the fallback
+            ● = current default &nbsp; ★ = top performer. Click a variant name to open it on your live site, or 👁 compare
+            to render variants side by side right here — both use preview mode, so nothing is recorded. "Make the default" sets the fallback
             variant while the AI keeps personalizing per visitor. "Force for everyone" overrides the AI entirely. Both are
             reversible on the Slots page.{!siteUrl && " To enable previews, set your Site URL on the Slots page."}
           </p>
