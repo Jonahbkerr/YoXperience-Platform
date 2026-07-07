@@ -150,6 +150,27 @@ router.patch(
         updates.description = req.body.description;
       if (req.body.goal !== undefined)
         updates.goal = req.body.goal ? String(req.body.goal).slice(0, 1000) : null;
+      // previewUrl: the exact page where this slot renders, used to build
+      // per-variant preview links. Opened only in the owner's browser (never
+      // fetched server-side), so an http(s) sanity check is sufficient — no
+      // SSRF concern, and LAN/staging URLs are legitimately previewable.
+      if (req.body.previewUrl !== undefined) {
+        const pv = req.body.previewUrl;
+        if (pv) {
+          let ok = false;
+          try {
+            const u = new URL(String(pv));
+            ok = u.protocol === "http:" || u.protocol === "https:";
+          } catch { /* ok stays false */ }
+          if (!ok) {
+            res.status(400).json({ error: "previewUrl must be a valid http:// or https:// URL" });
+            return;
+          }
+          updates.previewUrl = String(pv).slice(0, 500);
+        } else {
+          updates.previewUrl = null;
+        }
+      }
       if (req.body.variants !== undefined)
         updates.variants = JSON.stringify(req.body.variants);
       if (req.body.defaultVariant !== undefined)

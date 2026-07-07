@@ -94,4 +94,41 @@ describe("GET /api/projects/:id/analytics/recommendations", () => {
     expect(rec.aiRationale).toBe("b converts better.");
     expect(res.body.summary.actionable).toBe(1);
   });
+
+  it("passes each slot's previewUrl through to the recommendation", async () => {
+    queryResults.push(
+      [{ id: "p1" }], // project access
+      [
+        {
+          id: "slot-1",
+          slotKey: "pricing-cta",
+          variants: JSON.stringify(["default", "urgency"]),
+          defaultVariant: "default",
+          mode: "auto",
+          forcedVariant: null,
+          previewUrl: "https://bsmeter.ai/pricing",
+        },
+        {
+          id: "slot-2",
+          slotKey: "hero-headline",
+          variants: JSON.stringify(["a", "b"]),
+          defaultVariant: "a",
+          mode: "auto",
+          forcedVariant: null,
+          previewUrl: null, // unset → null passes through, dashboard falls back to siteUrl
+        },
+      ],
+      // Low sample sizes → "gathering", no winner, so no rationale queries fire.
+      [
+        { slotKey: "pricing-cta", variant: "default", impressions: 5, engagements: 1, dismisses: 0 },
+        { slotKey: "hero-headline", variant: "a", impressions: 5, engagements: 1, dismisses: 0 },
+      ],
+    );
+
+    const res = await get(createApp(), "/api/projects/p1/analytics/recommendations");
+    expect(res.status).toBe(200);
+    const byKey = Object.fromEntries(res.body.recommendations.map((r: any) => [r.slotKey, r]));
+    expect(byKey["pricing-cta"].previewUrl).toBe("https://bsmeter.ai/pricing");
+    expect(byKey["hero-headline"].previewUrl).toBeNull();
+  });
 });

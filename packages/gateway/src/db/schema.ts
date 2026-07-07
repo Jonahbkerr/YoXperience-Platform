@@ -116,6 +116,11 @@ export const slotDefinitions = pgTable("slot_definitions", {
   description: text("description"),
   variants: text("variants").notNull(), // JSON array of variant names
   defaultVariant: text("default_variant").notNull(),
+  // Exact page URL where this slot renders (e.g. https://site.com/pricing or a
+  // deep /analysis/<id> page). Used to build per-variant preview links that
+  // actually land on the page containing the slot. Null → fall back to the
+  // project siteUrl (works only for slots on the site root/homepage).
+  previewUrl: text("preview_url"),
   // Per-slot optimization goal — injected into the analysis prompt for this slot
   goal: text("goal"),
   mode: slotModeEnum("mode").notNull().default("auto"),

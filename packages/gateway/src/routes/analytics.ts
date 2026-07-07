@@ -303,9 +303,12 @@ router.get(
         );
       });
 
-      // Attach the slot id (dashboard needs it to PATCH) and one supporting
-      // LLM rationale for the winning variant, when present.
+      // Attach the slot id (dashboard needs it to PATCH), the per-slot preview
+      // URL (so the dashboard can build preview links that land on the page the
+      // slot actually renders on), and one supporting LLM rationale for the
+      // winning variant, when present.
       const slotIdByKey = new Map(slots.map((s) => [s.slotKey, s.id]));
+      const previewUrlByKey = new Map(slots.map((s) => [s.slotKey, s.previewUrl ?? null]));
       const withContext = await Promise.all(
         recommendations.map(async (rec) => {
           let aiRationale: string | null = null;
@@ -325,7 +328,12 @@ router.get(
               .limit(1);
             aiRationale = row?.rationale ?? null;
           }
-          return { ...rec, slotId: slotIdByKey.get(rec.slotKey) ?? null, aiRationale };
+          return {
+            ...rec,
+            slotId: slotIdByKey.get(rec.slotKey) ?? null,
+            previewUrl: previewUrlByKey.get(rec.slotKey) ?? null,
+            aiRationale,
+          };
         }),
       );
 

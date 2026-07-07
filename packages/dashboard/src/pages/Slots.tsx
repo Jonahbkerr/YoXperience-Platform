@@ -15,6 +15,7 @@ interface SlotDefinition {
   mode: SlotMode;
   forcedVariant: string | null;
   trafficSplit: string | null; // JSON object
+  previewUrl: string | null; // exact page URL where this slot renders
   createdAt: string;
 }
 
@@ -108,6 +109,7 @@ export default function Slots() {
   const [editMode, setEditMode] = useState<SlotMode>("auto");
   const [editForced, setEditForced] = useState("");
   const [editGoal, setEditGoal] = useState("");
+  const [editPreviewUrl, setEditPreviewUrl] = useState("");
   const [editSplit, setEditSplit] = useState<SplitEditState>({});
   const [saving, setSaving] = useState(false);
   const [configError, setConfigError] = useState("");
@@ -153,10 +155,15 @@ export default function Slots() {
   };
 
   // Build a preview URL that forces a specific variant on the live site.
-  const previewUrl = (slotKey: string, variant: string) =>
-    siteUrl
-      ? `${siteUrl}${siteUrl.includes("?") ? "&" : "?"}yxp_preview=${encodeURIComponent(slotKey)}:${encodeURIComponent(variant)}`
+  // Each slot may set its own previewUrl (the exact page it renders on, e.g.
+  // /pricing or a deep /analysis/<id> page); otherwise fall back to the
+  // project-wide siteUrl — which only works for slots on the site root.
+  const previewUrl = (slotKey: string, variant: string) => {
+    const base = slots.find((s) => s.slotKey === slotKey)?.previewUrl || siteUrl;
+    return base
+      ? `${base}${base.includes("?") ? "&" : "?"}yxp_preview=${encodeURIComponent(slotKey)}:${encodeURIComponent(variant)}`
       : null;
+  };
 
   const toggleExperiments = async () => {
     if (!selectedProject || experimentsEnabled === null || togglingExperiments) return;
@@ -253,6 +260,7 @@ export default function Slots() {
     setEditMode(slot.mode ?? "auto");
     setEditForced(slot.forcedVariant ?? parsedVariants[0] ?? "");
     setEditGoal(slot.goal ?? "");
+    setEditPreviewUrl(slot.previewUrl ?? "");
     if (slot.trafficSplit) {
       const split: Record<string, number> = JSON.parse(slot.trafficSplit);
       const state: SplitEditState = {};
@@ -277,7 +285,26 @@ export default function Slots() {
     setSaving(true);
     setConfigError("");
     try {
-      const body: Record<string, unknown> = { mode: editMode, goal: editGoal || null };
+      // Validate the preview URL client-side for a fast, clear error (the
+      // gateway enforces the same rule server-side).
+      const trimmedPreview = editPreviewUrl.trim();
+      if (trimmedPreview) {
+        let okUrl = false;
+        try {
+          const u = new URL(trimmedPreview);
+          okUrl = u.protocol === "http:" || u.protocol === "https:";
+        } catch { /* okUrl stays false */ }
+        if (!okUrl) {
+          setConfigError("Preview URL must be a full http:// or https:// address.");
+          setSaving(false);
+          return;
+        }
+      }
+      const body: Record<string, unknown> = {
+        mode: editMode,
+        goal: editGoal || null,
+        previewUrl: trimmedPreview || null,
+      };
       if (editMode === "forced") {
         body.forcedVariant = editForced;
       } else if (editMode === "split") {
@@ -625,6 +652,26 @@ export default function Slots() {
                       />
                       <div style={{ fontSize: "var(--yc-font-size-xs)", color: "var(--yc-color-text-tertiary)", marginTop: 4 }}>
                         Injected into the AI's analysis of this slot, on top of the project goal.
+                      </div>
+                    </div>
+
+                    {/* Per-slot preview page URL — powers the ↗ variant previews */}
+                    <div style={{ marginBottom: 16 }}>
+                      <div style={{ fontSize: "var(--yc-font-size-sm)", fontWeight: "var(--yc-font-weight-medium)", marginBottom: 6 }}>
+                        Preview page URL <span style={{ color: "var(--yc-color-text-tertiary)", fontWeight: "var(--yc-font-weight-regular)" }}>— optional</span>
+                      </div>
+                      <input
+                        type="url"
+                        value={editPreviewUrl}
+                        onChange={(e) => setEditPreviewUrl(e.target.value)}
+                        placeholder={siteUrl ? `${siteUrl}/pricing` : "https://yoursite.com/pricing"}
+                        style={{ ...inputStyle, fontSize: "var(--yc-font-size-sm)" }}
+                      />
+                      <div style={{ fontSize: "var(--yc-font-size-xs)", color: "var(--yc-color-text-tertiary)", marginTop: 4, lineHeight: 1.5 }}>
+                        The exact page where this slot renders — used to build the ↗ variant preview links above.
+                        Leave blank to use the project Site URL{siteUrl ? "" : " (not set yet)"}, which only works for
+                        slots on the homepage. For a slot on a deep page, paste a real URL like{" "}
+                        <code style={{ background: "var(--yc-color-fill)", padding: "1px 4px", borderRadius: 4 }}>https://yoursite.com/analysis/12345</code>.
                       </div>
                     </div>
 
