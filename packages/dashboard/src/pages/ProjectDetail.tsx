@@ -83,6 +83,23 @@ const badgeBase: React.CSSProperties = {
   fontWeight: "var(--yc-font-weight-medium)",
 };
 
+// Mirror of the gateway's net-guard: warn the moment a private/LAN base URL
+// is typed, since the cloud engine can never reach it.
+function privateUrlWarning(raw: string): string | null {
+  if (!raw) return null;
+  let host = "";
+  try { host = new URL(raw).hostname.toLowerCase(); } catch { return null; }
+  if (host === "localhost" || host.endsWith(".local") || host.endsWith(".internal") || host === "0.0.0.0")
+    return `"${host}" is only reachable from your own machine — the cloud engine can't see it. Expose your model with a public tunnel (e.g. cloudflared) and paste that URL.`;
+  const m = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.\d{1,3}$/);
+  if (m) {
+    const a = +m[1], b = +m[2];
+    if (a === 0 || a === 127 || a === 10 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168))
+      return `${host} is a private/LAN address the cloud engine can't reach. Expose your model with a public tunnel (e.g. cloudflared) and use that https URL.`;
+  }
+  return null;
+}
+
 const PROVIDER_PRESETS: Record<string, { baseUrl: string; hint: string }> = {
   openai: { baseUrl: "https://api.openai.com/v1", hint: "e.g. gpt-4o-mini" },
   anthropic: { baseUrl: "https://api.anthropic.com/v1", hint: "e.g. claude-sonnet-4 (OpenAI-compat endpoint)" },
@@ -146,6 +163,7 @@ function AiGoalsSection({ project, onSaved }: { project: Project; onSaved: () =>
   const keyPlaceholder = project.hasLlmKey
     ? `•••• saved (…${project.llmApiKeyLastFour ?? ""}) — leave blank to keep`
     : "Paste your provider API key";
+  const urlWarning = privateUrlWarning(baseUrl);
 
   return (
     <div style={{ ...cardStyle, marginBottom: "var(--yc-space-8)" }}>
@@ -184,7 +202,17 @@ function AiGoalsSection({ project, onSaved }: { project: Project; onSaved: () =>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--yc-space-3)", marginBottom: "var(--yc-space-3)" }}>
         <div>
           <label style={labelStyle}>Base URL</label>
-          <input style={{ ...inputStyle, fontFamily: "var(--yc-font-mono)", fontSize: "var(--yc-font-size-sm)" }} value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="https://api.openai.com/v1" />
+          <input
+            style={{ ...inputStyle, fontFamily: "var(--yc-font-mono)", fontSize: "var(--yc-font-size-sm)", borderColor: urlWarning ? "var(--yc-color-error)" : undefined }}
+            value={baseUrl}
+            onChange={(e) => setBaseUrl(e.target.value)}
+            placeholder="https://api.openai.com/v1"
+          />
+          {urlWarning && (
+            <div style={{ fontSize: "var(--yc-font-size-xs)", color: "var(--yc-color-error)", marginTop: 4, lineHeight: 1.4 }}>
+              {urlWarning}
+            </div>
+          )}
         </div>
         <div>
           <label style={labelStyle}>Model</label>
@@ -207,8 +235,8 @@ function AiGoalsSection({ project, onSaved }: { project: Project; onSaved: () =>
       )}
 
       <div style={{ display: "flex", gap: 8, marginTop: "var(--yc-space-5)" }}>
-        <button style={{ ...btnPrimary, opacity: saving ? 0.6 : 1 }} disabled={saving} onClick={save}>{saving ? "Saving…" : "Save"}</button>
-        <button style={{ ...btnOutline, opacity: testing ? 0.6 : 1 }} disabled={testing || !baseUrl || !model} onClick={test} title="Send a tiny request to verify the connection">{testing ? "Testing…" : "Test connection"}</button>
+        <button style={{ ...btnPrimary, opacity: saving || !!urlWarning ? 0.6 : 1 }} disabled={saving || !!urlWarning} onClick={save}>{saving ? "Saving…" : "Save"}</button>
+        <button style={{ ...btnOutline, opacity: testing || !!urlWarning ? 0.6 : 1 }} disabled={testing || !!urlWarning || !baseUrl || !model} onClick={test} title="Send a tiny request to verify the connection">{testing ? "Testing…" : "Test connection"}</button>
       </div>
     </div>
   );

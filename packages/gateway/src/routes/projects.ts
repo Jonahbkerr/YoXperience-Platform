@@ -7,6 +7,7 @@ import { requireOrgAccess } from "../middleware/org-access.js";
 import { slugify } from "../lib/slugify.js";
 import { nanoid } from "nanoid";
 import { encryptSecret, decryptSecret, lastFour } from "../lib/crypto.js";
+import { publicUrlProblem } from "../lib/net-guard.js";
 
 const router = Router();
 
@@ -203,7 +204,16 @@ router.patch(
 
       // ── Bring-your-own AI connection ──
       if (llmProvider !== undefined) updates.llmProvider = llmProvider || null;
-      if (llmBaseUrl !== undefined) updates.llmBaseUrl = llmBaseUrl || null;
+      if (llmBaseUrl !== undefined) {
+        if (llmBaseUrl) {
+          const problem = publicUrlProblem(String(llmBaseUrl));
+          if (problem) {
+            res.status(400).json({ error: problem });
+            return;
+          }
+        }
+        updates.llmBaseUrl = llmBaseUrl || null;
+      }
       if (llmModel !== undefined) updates.llmModel = llmModel || null;
       // llmApiKey: raw key from the client. "" clears it; a real value is
       // encrypted at rest and never echoed back.
@@ -259,6 +269,11 @@ router.post(
       }
       if (!baseUrl || !model) {
         res.status(400).json({ ok: false, error: "baseUrl and model are required" });
+        return;
+      }
+      const urlProblem = publicUrlProblem(String(baseUrl));
+      if (urlProblem) {
+        res.json({ ok: false, error: urlProblem });
         return;
       }
 
