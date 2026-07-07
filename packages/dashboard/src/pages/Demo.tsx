@@ -124,7 +124,7 @@ export default function DemoPage() {
   const displayPatients = [...patients]
     .filter(p => acuityFilter === "all" || p.acuity.toLowerCase() === acuityFilter.toLowerCase())
     .sort((a, b) => {
-      const order = { Critical: 0, Urgent: 1, Moderate: 2, Minor: 3 };
+      const order: Record<string, number> = { Critical: 0, Urgent: 1, Moderate: 2, Minor: 3 };
       if (sortBy === "acuity") return order[a.acuity] - order[b.acuity];
       if (sortBy === "waitTime") return b.waitTime - a.waitTime;
       if (sortBy === "name") return a.name.localeCompare(b.name);
@@ -200,7 +200,7 @@ export default function DemoPage() {
               <div style={{ marginBottom:20 }}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
                   <span style={{ background:"#eff6ff", color:"#1e40af", fontSize:10, fontWeight:700, padding:"2px 10px", borderRadius:6 }}>STEP 1 OF 3 — Triage Assessment</span>
-                  <span style={{ fontSize:10, color:"#aeaeb2" }}>{p.name} · {p.mrn}</span>
+                  <span style={{ fontSize:10, color:"#aeaeb2" }}>{p.name} · {p.id}</span>
                 </div>
                 <h2 style={{ margin:"4px 0", fontSize:18 }}>{p.chiefComplaint}</h2>
               </div>
