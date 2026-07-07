@@ -6,8 +6,16 @@ import { requireAuth } from "../middleware/auth.js";
 import { requireOrgAccess } from "../middleware/org-access.js";
 import { slugify } from "../lib/slugify.js";
 import { nanoid } from "nanoid";
+import { encryptSecret, decryptSecret, lastFour } from "../lib/crypto.js";
 
 const router = Router();
+
+// Strip the encrypted LLM key from any project row before it leaves the server.
+// Exposes only display-safe fields + booleans about what's configured.
+function sanitizeProject(p: Record<string, any>) {
+  const { llmApiKeyEncrypted, ...rest } = p;
+  return { ...rest, hasLlmKey: !!llmApiKeyEncrypted };
+}
 
 // GET / — List projects for user's org
 router.get(
@@ -130,7 +138,7 @@ router.get(
         .where(eq(apiKeys.projectId, projectId))
         .orderBy(apiKeys.createdAt);
 
-      res.json({ project, keys });
+      res.json({ project: sanitizeProject(project), keys });
     } catch (err) {
       next(err);
     }
@@ -146,7 +154,10 @@ router.patch(
     try {
       const orgId = req.auth!.orgId;
       const { projectId } = req.params;
-      const { name, slug, coreApiUrl, siteUrl, experimentsEnabled } = req.body;
+      const {
+        name, slug, coreApiUrl, siteUrl, experimentsEnabled,
+        optimizationGoal, llmProvider, llmBaseUrl, llmModel, llmApiKey,
+      } = req.body;
 
       // Verify project belongs to org
       const [existing] = await db
@@ -186,13 +197,100 @@ router.patch(
       if (experimentsEnabled !== undefined)
         updates.experimentsEnabled = Boolean(experimentsEnabled);
 
+      // ── Goal-driven prompt steering ──
+      if (optimizationGoal !== undefined)
+        updates.optimizationGoal = optimizationGoal ? String(optimizationGoal).slice(0, 2000) : null;
+
+      // ── Bring-your-own AI connection ──
+      if (llmProvider !== undefined) updates.llmProvider = llmProvider || null;
+      if (llmBaseUrl !== undefined) updates.llmBaseUrl = llmBaseUrl || null;
+      if (llmModel !== undefined) updates.llmModel = llmModel || null;
+      // llmApiKey: raw key from the client. "" clears it; a real value is
+      // encrypted at rest and never echoed back.
+      if (llmApiKey !== undefined) {
+        if (llmApiKey) {
+          updates.llmApiKeyEncrypted = encryptSecret(String(llmApiKey));
+          updates.llmApiKeyLastFour = lastFour(String(llmApiKey));
+        } else {
+          updates.llmApiKeyEncrypted = null;
+          updates.llmApiKeyLastFour = null;
+        }
+      }
+
       const [updated] = await db
         .update(projects)
         .set(updates)
         .where(eq(projects.id, projectId))
         .returning();
 
-      res.json(updated);
+      res.json(sanitizeProject(updated));
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /:projectId/llm-test — verify a BYO LLM connection with a tiny call.
+// Body: { baseUrl, model, apiKey? }. If apiKey is omitted/empty and the
+// project already has a stored key, the saved key is used (so users can
+// re-test without re-entering it).
+router.post(
+  "/:projectId/llm-test",
+  requireAuth,
+  requireOrgAccess("admin"),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const orgId = req.auth!.orgId;
+      const { projectId } = req.params;
+      const { baseUrl, model } = req.body;
+      let apiKey: string | undefined = req.body.apiKey || undefined;
+
+      const [project] = await db
+        .select()
+        .from(projects)
+        .where(and(eq(projects.id, projectId), eq(projects.orgId, orgId)))
+        .limit(1);
+      if (!project) {
+        res.status(404).json({ error: "Project not found" });
+        return;
+      }
+      if (!apiKey && project.llmApiKeyEncrypted) {
+        try { apiKey = decryptSecret(project.llmApiKeyEncrypted); } catch { /* ignore */ }
+      }
+      if (!baseUrl || !model) {
+        res.status(400).json({ ok: false, error: "baseUrl and model are required" });
+        return;
+      }
+
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 15000);
+      try {
+        const r = await fetch(`${String(baseUrl).replace(/\/$/, "")}/chat/completions`, {
+          method: "POST",
+          headers,
+          signal: ctrl.signal,
+          body: JSON.stringify({
+            model,
+            messages: [{ role: "user", content: "Reply with the single word: ok" }],
+            max_tokens: 5,
+            temperature: 0,
+          }),
+        });
+        clearTimeout(timer);
+        if (!r.ok) {
+          const body = (await r.text()).slice(0, 200);
+          res.json({ ok: false, status: r.status, error: body || `HTTP ${r.status}` });
+          return;
+        }
+        const j = (await r.json()) as { choices?: { message?: { content?: string } }[] };
+        const reply = j.choices?.[0]?.message?.content?.trim() ?? "";
+        res.json({ ok: true, model, sample: reply.slice(0, 60) });
+      } catch (e) {
+        clearTimeout(timer);
+        res.json({ ok: false, error: (e as Error).name === "AbortError" ? "Timed out after 15s" : (e as Error).message });
+      }
     } catch (err) {
       next(err);
     }

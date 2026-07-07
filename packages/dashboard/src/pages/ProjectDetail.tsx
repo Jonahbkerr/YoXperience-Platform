@@ -10,6 +10,12 @@ interface Project {
   coreApiUrl: string | null;
   createdAt: string;
   updatedAt: string;
+  optimizationGoal?: string | null;
+  llmProvider?: string | null;
+  llmBaseUrl?: string | null;
+  llmModel?: string | null;
+  llmApiKeyLastFour?: string | null;
+  hasLlmKey?: boolean;
 }
 
 interface ApiKey {
@@ -76,6 +82,137 @@ const badgeBase: React.CSSProperties = {
   fontSize: "var(--yc-font-size-xs)",
   fontWeight: "var(--yc-font-weight-medium)",
 };
+
+const PROVIDER_PRESETS: Record<string, { baseUrl: string; hint: string }> = {
+  openai: { baseUrl: "https://api.openai.com/v1", hint: "e.g. gpt-4o-mini" },
+  anthropic: { baseUrl: "https://api.anthropic.com/v1", hint: "e.g. claude-sonnet-4 (OpenAI-compat endpoint)" },
+  openrouter: { baseUrl: "https://openrouter.ai/api/v1", hint: "e.g. anthropic/claude-sonnet-4" },
+  groq: { baseUrl: "https://api.groq.com/openai/v1", hint: "e.g. llama-3.3-70b-versatile" },
+  custom: { baseUrl: "", hint: "any OpenAI-compatible /chat/completions endpoint" },
+};
+
+// ── AI & Goals: bring-your-own LLM connection + optimization goal ──
+function AiGoalsSection({ project, onSaved }: { project: Project; onSaved: () => void }) {
+  const [goal, setGoal] = useState(project.optimizationGoal ?? "");
+  const [provider, setProvider] = useState(project.llmProvider ?? "");
+  const [baseUrl, setBaseUrl] = useState(project.llmBaseUrl ?? "");
+  const [model, setModel] = useState(project.llmModel ?? "");
+  const [apiKey, setApiKey] = useState(""); // never prefilled; blank = keep existing
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const pickProvider = (p: string) => {
+    setProvider(p);
+    const preset = PROVIDER_PRESETS[p];
+    if (preset && preset.baseUrl && !baseUrl) setBaseUrl(preset.baseUrl);
+  };
+
+  const save = async () => {
+    setSaving(true); setMsg(null);
+    try {
+      const body: Record<string, unknown> = {
+        optimizationGoal: goal || null,
+        llmProvider: provider || null,
+        llmBaseUrl: baseUrl || null,
+        llmModel: model || null,
+      };
+      if (apiKey) body.llmApiKey = apiKey; // only send if user typed a new one
+      await api(`/api/projects/${project.id}`, { method: "PATCH", body: JSON.stringify(body) });
+      setApiKey("");
+      setMsg({ ok: true, text: "Saved." });
+      onSaved();
+    } catch (e: any) {
+      setMsg({ ok: false, text: e.message || "Failed to save." });
+    } finally { setSaving(false); }
+  };
+
+  const test = async () => {
+    setTesting(true); setTestResult(null);
+    try {
+      const r = await api<{ ok: boolean; error?: string; sample?: string; status?: number }>(
+        `/api/projects/${project.id}/llm-test`,
+        { method: "POST", body: JSON.stringify({ baseUrl, model, apiKey: apiKey || undefined }) }
+      );
+      setTestResult(r.ok
+        ? { ok: true, text: `Connected — model replied "${r.sample || "ok"}"` }
+        : { ok: false, text: r.error || `Failed (HTTP ${r.status ?? "?"})` });
+    } catch (e: any) {
+      setTestResult({ ok: false, text: e.message || "Test failed" });
+    } finally { setTesting(false); }
+  };
+
+  const keyPlaceholder = project.hasLlmKey
+    ? `•••• saved (…${project.llmApiKeyLastFour ?? ""}) — leave blank to keep`
+    : "Paste your provider API key";
+
+  return (
+    <div style={{ ...cardStyle, marginBottom: "var(--yc-space-8)" }}>
+      <h2 style={{ fontSize: "var(--yc-font-size-lg)", fontWeight: "var(--yc-font-weight-semibold)", marginBottom: 4 }}>AI &amp; Goals</h2>
+      <p style={{ fontSize: "var(--yc-font-size-sm)", color: "var(--yc-color-text-secondary)", marginBottom: "var(--yc-space-5)" }}>
+        Steer what the AI optimizes toward, and optionally run it on your own model.
+      </p>
+
+      {/* Optimization goal */}
+      <label style={labelStyle}>Optimization goal</label>
+      <textarea
+        value={goal}
+        onChange={(e) => setGoal(e.target.value)}
+        placeholder="e.g. Maximize 30-day trial-to-paid conversion. Our users are non-technical SMB owners — favor clarity over cleverness."
+        rows={3}
+        style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit" }}
+      />
+      <div style={{ fontSize: "var(--yc-font-size-xs)", color: "var(--yc-color-text-tertiary)", marginTop: 4, marginBottom: "var(--yc-space-6)" }}>
+        Injected into every analysis prompt. The AI weighs behavior against this goal instead of generic engagement. Leave blank for the default (maximize engagement).
+      </div>
+
+      {/* BYO model */}
+      <div style={{ fontSize: "var(--yc-font-size-sm)", fontWeight: "var(--yc-font-weight-medium)", marginBottom: "var(--yc-space-3)" }}>
+        Your AI model <span style={{ color: "var(--yc-color-text-tertiary)", fontWeight: "var(--yc-font-weight-regular)" }}>— optional; falls back to the platform default</span>
+      </div>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: "var(--yc-space-3)" }}>
+        {Object.keys(PROVIDER_PRESETS).map((p) => (
+          <button key={p} onClick={() => pickProvider(p)} style={{
+            padding: "4px 12px", fontSize: "var(--yc-font-size-xs)", borderRadius: "var(--yc-radius-md)", cursor: "pointer",
+            border: "1px solid", borderColor: provider === p ? "var(--yc-color-primary)" : "var(--yc-color-border)",
+            background: provider === p ? "var(--yc-color-primary)" : "transparent",
+            color: provider === p ? "#fff" : "var(--yc-color-text-secondary)", textTransform: "capitalize",
+          }}>{p}</button>
+        ))}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--yc-space-3)", marginBottom: "var(--yc-space-3)" }}>
+        <div>
+          <label style={labelStyle}>Base URL</label>
+          <input style={{ ...inputStyle, fontFamily: "var(--yc-font-mono)", fontSize: "var(--yc-font-size-sm)" }} value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="https://api.openai.com/v1" />
+        </div>
+        <div>
+          <label style={labelStyle}>Model</label>
+          <input style={{ ...inputStyle, fontFamily: "var(--yc-font-mono)", fontSize: "var(--yc-font-size-sm)" }} value={model} onChange={(e) => setModel(e.target.value)} placeholder={provider && PROVIDER_PRESETS[provider]?.hint || "model id"} />
+        </div>
+      </div>
+      <label style={labelStyle}>API key</label>
+      <input type="password" autoComplete="off" style={{ ...inputStyle, fontFamily: "var(--yc-font-mono)", fontSize: "var(--yc-font-size-sm)" }} value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder={keyPlaceholder} />
+      <div style={{ fontSize: "var(--yc-font-size-xs)", color: "var(--yc-color-text-tertiary)", marginTop: 4 }}>
+        Encrypted at rest (AES-256-GCM). Never shown again after saving.
+      </div>
+
+      {testResult && (
+        <div style={{ marginTop: "var(--yc-space-3)", fontSize: "var(--yc-font-size-sm)", color: testResult.ok ? "var(--yc-color-success, #22c55e)" : "var(--yc-color-error)" }}>
+          {testResult.ok ? "✓ " : "✕ "}{testResult.text}
+        </div>
+      )}
+      {msg && (
+        <div style={{ marginTop: "var(--yc-space-2)", fontSize: "var(--yc-font-size-sm)", color: msg.ok ? "var(--yc-color-success, #22c55e)" : "var(--yc-color-error)" }}>{msg.text}</div>
+      )}
+
+      <div style={{ display: "flex", gap: 8, marginTop: "var(--yc-space-5)" }}>
+        <button style={{ ...btnPrimary, opacity: saving ? 0.6 : 1 }} disabled={saving} onClick={save}>{saving ? "Saving…" : "Save"}</button>
+        <button style={{ ...btnOutline, opacity: testing ? 0.6 : 1 }} disabled={testing || !baseUrl || !model} onClick={test} title="Send a tiny request to verify the connection">{testing ? "Testing…" : "Test connection"}</button>
+      </div>
+    </div>
+  );
+}
 
 export default function ProjectDetail() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -249,6 +386,9 @@ export default function ProjectDetail() {
           </div>
         </div>
       </div>
+
+      {/* AI & Goals */}
+      <AiGoalsSection project={project} onSaved={fetchProject} />
 
       {/* New key banner */}
       {newRawKey && (

@@ -148,6 +148,8 @@ router.patch(
       const updates: Record<string, unknown> = {};
       if (req.body.description !== undefined)
         updates.description = req.body.description;
+      if (req.body.goal !== undefined)
+        updates.goal = req.body.goal ? String(req.body.goal).slice(0, 1000) : null;
       if (req.body.variants !== undefined)
         updates.variants = JSON.stringify(req.body.variants);
       if (req.body.defaultVariant !== undefined)

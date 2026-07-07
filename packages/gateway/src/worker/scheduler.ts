@@ -15,7 +15,7 @@
 
 import { db } from "../db/client.js";
 import { describeError } from "../lib/errors.js";
-import { analyzeWithLLM, summarizeTelemetry, type TelemetrySummary, type LLMRecommendation } from "../services/llm-analyzer.js";
+import { analyzeWithLLM, summarizeTelemetry, analyzeAndStoreRecommendations, type TelemetrySummary, type LLMRecommendation } from "../services/llm-analyzer.js";
 import { telemetryEvents, endUserPreferences, slotDefinitions } from "../db/schema.js";
 import { eq, and, gte, isNull } from "drizzle-orm";
 
@@ -128,54 +128,15 @@ async function main() {
     const uniqueUsers = [...new Set(unprocessed.map((e) => `${e.projectId}::${e.endUserId}`))];
     console.log(`🧠 Running LLM analysis for ${uniqueUsers.length} user(s)...`);
 
+    // Centralized: resolves each project's own LLM connection (BYO key) and
+    // optimization goals, falls back to the platform default, and stores the
+    // recommendations. Keeps the worker and the on-demand /analyze route
+    // behaving identically.
+    const fallbackConfig = { url: LM_STUDIO_URL, model: LM_MODEL, temperature: 0.2 };
     for (const userKey of uniqueUsers) {
       const [projectId, endUserId] = userKey.split("::");
       try {
-        const slots = await db.select().from(slotDefinitions).where(eq(slotDefinitions.projectId, projectId));
-        const summaries: TelemetrySummary[] = [];
-        for (const slot of slots) {
-          const summary = await summarizeTelemetry(projectId, endUserId, slot.slotKey);
-          if (summary && summary.totalEvents > 0) summaries.push(summary);
-        }
-
-        if (summaries.length === 0) continue;
-
-        const recommendations = await analyzeWithLLM(summaries, {
-          url: LM_STUDIO_URL,
-          model: LM_MODEL,
-          temperature: 0.2,
-        });
-
-        for (const rec of recommendations) {
-          // Normalize common LLM field name variations and typos
-          if (!rec.slotKey || !rec.recommendedVariant) {
-            if ((rec as any)["slot-key"]) rec.slotKey = (rec as any)["slot-key"];
-            else if ((rec as any)["slot_key"]) rec.slotKey = (rec as any)["slot_key"];
-            else {
-              const keys = Object.keys(rec as any);
-              const match = keys.find(k => /slot.*key/i.test(k));
-              if (match) rec.slotKey = (rec as any)[match];
-            }
-            if (!rec.slotKey) continue;
-          }
-
-          const variantWeights: Record<string, number> = {};
-          variantWeights[rec.recommendedVariant] = rec.confidence / 100;
-          for (const alt of rec.alternativeVariants || []) {
-            variantWeights[alt.variant] = (100 - rec.confidence) / 100 / (rec.alternativeVariants?.length || 1);
-          }
-
-          const [existingPref] = await db
-            .select().from(endUserPreferences)
-            .where(and(eq(endUserPreferences.projectId, projectId), eq(endUserPreferences.endUserId, endUserId), eq(endUserPreferences.slotKey, rec.slotKey)))
-            .limit(1);
-
-          if (existingPref) {
-            await db.update(endUserPreferences).set({ variantWeights: JSON.stringify(variantWeights), resolvedVariant: rec.recommendedVariant, rationale: rec.rationale || null }).where(eq(endUserPreferences.id, existingPref.id));
-          }
-          // If no existing preference, skip — EMA should have created one already
-        }
-
+        const recommendations = await analyzeAndStoreRecommendations(projectId, endUserId, fallbackConfig);
         console.log(`  ✅ ${endUserId}: ${recommendations.length} LLM recommendation(s)`);
       } catch (err) {
         console.warn(`  ⚠️ ${endUserId}: LLM unavailable — ${describeError(err)}`);

@@ -72,6 +72,14 @@ export const projects = pgTable("projects", {
   siteUrl: text("site_url"),
   // Master switch: false pins every slot to its default variant
   experimentsEnabled: boolean("experiments_enabled").notNull().default(true),
+  // ── Bring-your-own AI: per-project LLM connection (nullable = use platform default) ──
+  llmProvider: text("llm_provider"), // label e.g. "openai" | "anthropic" | "azure" | "local"
+  llmBaseUrl: text("llm_base_url"), // OpenAI-compatible base, e.g. https://api.openai.com/v1
+  llmModel: text("llm_model"),
+  llmApiKeyEncrypted: text("llm_api_key_encrypted"), // AES-256-GCM, never returned to client
+  llmApiKeyLastFour: text("llm_api_key_last_four"), // for display only
+  // ── Goal-driven prompt steering: the objective the AI optimizes toward ──
+  optimizationGoal: text("optimization_goal"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -108,6 +116,8 @@ export const slotDefinitions = pgTable("slot_definitions", {
   description: text("description"),
   variants: text("variants").notNull(), // JSON array of variant names
   defaultVariant: text("default_variant").notNull(),
+  // Per-slot optimization goal — injected into the analysis prompt for this slot
+  goal: text("goal"),
   mode: slotModeEnum("mode").notNull().default("auto"),
   forcedVariant: text("forced_variant"),
   trafficSplit: text("traffic_split"), // JSON object e.g. {"icon":50,"gauge":30,"number":20}

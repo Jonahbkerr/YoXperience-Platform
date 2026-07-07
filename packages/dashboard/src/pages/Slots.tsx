@@ -9,6 +9,7 @@ interface SlotDefinition {
   id: string;
   slotKey: string;
   description: string | null;
+  goal: string | null;
   variants: string; // JSON array
   defaultVariant: string;
   mode: SlotMode;
@@ -106,6 +107,7 @@ export default function Slots() {
   const [configSlotId, setConfigSlotId] = useState<string | null>(null);
   const [editMode, setEditMode] = useState<SlotMode>("auto");
   const [editForced, setEditForced] = useState("");
+  const [editGoal, setEditGoal] = useState("");
   const [editSplit, setEditSplit] = useState<SplitEditState>({});
   const [saving, setSaving] = useState(false);
   const [configError, setConfigError] = useState("");
@@ -250,6 +252,7 @@ export default function Slots() {
     setConfigSlotId(slot.id);
     setEditMode(slot.mode ?? "auto");
     setEditForced(slot.forcedVariant ?? parsedVariants[0] ?? "");
+    setEditGoal(slot.goal ?? "");
     if (slot.trafficSplit) {
       const split: Record<string, number> = JSON.parse(slot.trafficSplit);
       const state: SplitEditState = {};
@@ -274,7 +277,7 @@ export default function Slots() {
     setSaving(true);
     setConfigError("");
     try {
-      const body: Record<string, unknown> = { mode: editMode };
+      const body: Record<string, unknown> = { mode: editMode, goal: editGoal || null };
       if (editMode === "forced") {
         body.forcedVariant = editForced;
       } else if (editMode === "split") {
@@ -608,6 +611,23 @@ export default function Slots() {
                       width: "100%",
                     }}
                   >
+                    {/* Per-slot optimization goal */}
+                    <div style={{ marginBottom: 16 }}>
+                      <div style={{ fontSize: "var(--yc-font-size-sm)", fontWeight: "var(--yc-font-weight-medium)", marginBottom: 6 }}>
+                        Goal for this slot <span style={{ color: "var(--yc-color-text-tertiary)", fontWeight: "var(--yc-font-weight-regular)" }}>— optional</span>
+                      </div>
+                      <textarea
+                        value={editGoal}
+                        onChange={(e) => setEditGoal(e.target.value)}
+                        placeholder="e.g. favor clarity over cleverness; guide first-time users, streamline returning ones"
+                        rows={2}
+                        style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit", fontSize: "var(--yc-font-size-sm)" }}
+                      />
+                      <div style={{ fontSize: "var(--yc-font-size-xs)", color: "var(--yc-color-text-tertiary)", marginTop: 4 }}>
+                        Injected into the AI's analysis of this slot, on top of the project goal.
+                      </div>
+                    </div>
+
                     <div
                       style={{
                         fontSize: "var(--yc-font-size-sm)",
