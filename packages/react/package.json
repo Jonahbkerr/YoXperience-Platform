@@ -1,0 +1,47 @@
+{
+  "name": "@yoxperience/react",
+  "version": "1.0.0",
+  "description": "React SDK for YoXperience — adaptive UI slots, automatic telemetry, and server-attributed conversions.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "types": "./dist/index.d.ts",
+  "module": "./dist/index.js",
+  "main": "./dist/index.cjs",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "node scripts/build.mjs && tsc -p tsconfig.json",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.6.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "yoxperience",
+    "adaptive-ui",
+    "ab-testing",
+    "experimentation",
+    "feature-flags",
+    "personalization",
+    "react"
+  ],
+  "sideEffectsNote": "Slots self-register with the gateway on mount; the provider streams telemetry."
+}
