@@ -282,7 +282,7 @@ function DocumentationPage() {
         <section id="script-tag" style={{ marginBottom: 64 }}>
           <h2>Script-tag setup (any framework)</h2>
           <p>Drop the snippet into your page, then mark up adaptive regions with <code className="yx-code">data-yx-slot</code> and one <code className="yx-code">&lt;template&gt;</code> per variant. Slots register themselves with the gateway on first load.</p>
-          <CodeWin>{`<script src="/yoxperience.js"
+          <CodeWin>{`<script src="https://www.yoxperience.com/yoxperience.js"
   data-api-key="yxp_pk_your_key_here"
   data-user-id="user-123"
   data-base-url="https://gateway-one-wheat.vercel.app/v1"></script>

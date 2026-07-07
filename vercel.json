@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "name": "yoxperience-platform",
-  "buildCommand": "npm run build:landing && npm run build:dashboard && cp -r packages/dashboard/dist packages/landing/dist/dashboard",
+  "buildCommand": "npm run build:landing && npm run build:dashboard && npm run build:sdk && cp -r packages/dashboard/dist packages/landing/dist/dashboard && cp packages/sdk/dist/yoxperience.js packages/sdk/dist/yoxperience.full.js packages/landing/dist/",
   "outputDirectory": "packages/landing/dist",
   "installCommand": "npm install",
   "routes": [
