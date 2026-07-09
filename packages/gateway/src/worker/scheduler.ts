@@ -16,8 +16,8 @@
 import { db } from "../db/client.js";
 import { describeError } from "../lib/errors.js";
 import { analyzeWithLLM, summarizeTelemetry, analyzeAndStoreRecommendations, type TelemetrySummary, type LLMRecommendation } from "../services/llm-analyzer.js";
-import { telemetryEvents, endUserPreferences, slotDefinitions } from "../db/schema.js";
-import { eq, and, gte, isNull } from "drizzle-orm";
+import { telemetryEvents, endUserPreferences, slotDefinitions, projects } from "../db/schema.js";
+import { eq, and, gte, isNull, isNotNull, inArray, sql } from "drizzle-orm";
 
 const INTERVAL_MIN = parseInt(process.env.ANALYSIS_INTERVAL_MIN || "30", 10);
 const LLM_ENABLED = process.env.LLM_ENABLED !== "false";
@@ -29,12 +29,117 @@ const EVENT_WEIGHTS: Record<string, number> = {
 };
 const ALPHA = 0.3;
 
+// How far back a manual "Run analysis now" looks for active users, and how
+// many users one run will analyze at most (each user = one LLM call).
+const MANUAL_WINDOW_HOURS = 24;
+const MANUAL_MAX_USERS = 50;
+// Streaming (auto-mode) pass: max users per 30s tick, so slow LLM calls can't
+// wedge the worker in one enormous pass.
+const STREAM_MAX_USERS_PER_TICK = 10;
+
+function platformFallbackConfig() {
+  return { url: LM_STUDIO_URL, model: LM_MODEL, temperature: 0.2, apiKey: process.env.LM_STUDIO_API_KEY };
+}
+
+// Owner-initiated analysis: the dashboard's "Run analysis now" sets
+// projects.analysis_requested_at; we pick it up here (runs every poll, even
+// when there is no new telemetry), analyze every user active in the last
+// MANUAL_WINDOW_HOURS, then record the outcome and clear the request.
+async function processManualRequests() {
+  const pending = await db
+    .select()
+    .from(projects)
+    .where(isNotNull(projects.analysisRequestedAt));
+
+  for (const project of pending) {
+    // Claim the request BEFORE running: atomically clear the exact timestamp we
+    // picked up and mark the run in flight. If zero rows match, another poll
+    // tick / worker replica already claimed it — skip. This is what makes one
+    // click equal one run, no matter how long the LLM takes.
+    const claimed = await db
+      .update(projects)
+      .set({ analysisRequestedAt: null, lastAnalysisStatus: "running" })
+      .where(and(eq(projects.id, project.id), eq(projects.analysisRequestedAt, project.analysisRequestedAt!)))
+      .returning({ id: projects.id });
+    if (claimed.length === 0) {
+      console.log(`\n🖐️  Manual request for ${project.name} already claimed — skipping`);
+      continue;
+    }
+
+    console.log(`\n🖐️  Manual analysis requested for project ${project.name} (${project.id})`);
+    let status: string;
+
+    if (!LLM_ENABLED) {
+      status = "error: LLM analysis is disabled on the platform (LLM_ENABLED=false)";
+    } else {
+      const since = new Date(Date.now() - MANUAL_WINDOW_HOURS * 60 * 60 * 1000);
+      const activeUsers = await db
+        .selectDistinct({ endUserId: telemetryEvents.endUserId })
+        .from(telemetryEvents)
+        .where(and(eq(telemetryEvents.projectId, project.id), gte(telemetryEvents.createdAt, since)))
+        .limit(MANUAL_MAX_USERS);
+
+      if (activeUsers.length === 0) {
+        status = `ok: no visitor activity in the last ${MANUAL_WINDOW_HOURS}h — nothing to analyze`;
+      } else {
+        let recCount = 0;
+        let failed = 0;
+        let attempted = 0;
+        let consecutive = 0;
+        let stoppedEarly = false;
+        let lastError = "";
+        for (const { endUserId } of activeUsers) {
+          attempted++;
+          try {
+            const recs = await analyzeAndStoreRecommendations(project.id, endUserId, platformFallbackConfig());
+            recCount += recs.length;
+            consecutive = 0;
+          } catch (err) {
+            failed++;
+            consecutive++;
+            lastError = describeError(err);
+            if (consecutive >= 3) {
+              // Model is clearly down — each failure can take minutes to
+              // surface. Stop and report honestly instead of grinding on.
+              stoppedEarly = true;
+              break;
+            }
+          }
+        }
+        const early = stoppedEarly ? ` (stopped early after ${consecutive} consecutive failures; ${activeUsers.length - attempted} user(s) not attempted)` : "";
+        status = failed === 0
+          ? `ok: analyzed ${activeUsers.length} user(s), ${recCount} recommendation(s)`
+          : failed === attempted
+            ? `error: all ${failed} attempted user(s) failed — ${lastError}${early}`.slice(0, 500)
+            : `partial: ${attempted - failed}/${activeUsers.length} user(s) analyzed, ${recCount} recommendation(s); last error: ${lastError}${early}`.slice(0, 500);
+      }
+    }
+
+    // Record the outcome. analysisRequestedAt is deliberately untouched here:
+    // the claim above already cleared the request we ran; if the owner clicked
+    // again mid-run, that newer request stays queued for the next poll.
+    await db
+      .update(projects)
+      .set({ lastAnalysisAt: new Date(), lastAnalysisStatus: status })
+      .where(eq(projects.id, project.id));
+    console.log(`   → ${status}`);
+  }
+}
+
 async function main() {
   console.log(`\n═══ YoXperience Scheduler ═══`);
   console.log(`Time: ${new Date().toISOString()}`);
   console.log(`Interval: ${INTERVAL_MIN} minutes`);
   console.log(`LLM: ${LLM_ENABLED ? "enabled" : "disabled"}`);
   if (LLM_ENABLED) console.log(`Model: ${LM_MODEL}`);
+
+  // Owner-initiated runs first — these must fire even when no new telemetry
+  // arrived (the whole point of manual mode is analyzing on demand).
+  try {
+    await processManualRequests();
+  } catch (err) {
+    console.warn(`[scheduler] manual-request pass failed: ${describeError(err)}`);
+  }
 
   const since = new Date(Date.now() - INTERVAL_MIN * 60 * 1000);
 
@@ -123,23 +228,55 @@ async function main() {
 
   console.log(`📈 EMA updated ${updatedPrefs} preference(s)`);
 
-  // 5. LLM deep analysis (if enabled)
+  // 5. LLM deep analysis (if enabled) — only for projects in "auto" mode.
+  // Manual-mode projects keep streaming telemetry and EMA updates, but their
+  // LLM analysis runs only when the owner requests it (processManualRequests).
   if (LLM_ENABLED) {
-    const uniqueUsers = [...new Set(unprocessed.map((e) => `${e.projectId}::${e.endUserId}`))];
-    console.log(`🧠 Running LLM analysis for ${uniqueUsers.length} user(s)...`);
+    const projectRows = await db
+      .select({ id: projects.id, aiAnalysisMode: projects.aiAnalysisMode })
+      .from(projects)
+      .where(inArray(projects.id, projectIds));
+    const manualProjects = new Set(projectRows.filter((p) => p.aiAnalysisMode === "manual").map((p) => p.id));
+
+    const allUsers = [...new Set(unprocessed.map((e) => `${e.projectId}::${e.endUserId}`))];
+    const eligible = allUsers.filter((k) => !manualProjects.has(k.split("::")[0]));
+    // Cap the streaming pass so one tick can't wedge the worker for tens of
+    // minutes (slow local models take ~minutes per call). Uncapped users are
+    // re-analyzed on their next event — the analysis window is 24h, so this is
+    // best-effort enrichment, not data loss (EMA above already processed all).
+    const uniqueUsers = eligible.slice(0, STREAM_MAX_USERS_PER_TICK);
+    const skippedManual = allUsers.length - eligible.length;
+    const deferred = eligible.length - uniqueUsers.length;
+    console.log(`🧠 Running LLM analysis for ${uniqueUsers.length} user(s)...${skippedManual > 0 ? ` (${skippedManual} skipped — manual-mode project)` : ""}${deferred > 0 ? ` (${deferred} deferred to a later tick)` : ""}`);
 
     // Centralized: resolves each project's own LLM connection (BYO key) and
     // optimization goals, falls back to the platform default, and stores the
     // recommendations. Keeps the worker and the on-demand /analyze route
     // behaving identically.
-    const fallbackConfig = { url: LM_STUDIO_URL, model: LM_MODEL, temperature: 0.2 };
+    let consecutiveFailures = 0;
     for (const userKey of uniqueUsers) {
+      // Owner clicks take priority: check for pending manual requests between
+      // users (one cheap SELECT) so a click never starves behind a long pass.
+      try {
+        await processManualRequests();
+      } catch (err) {
+        console.warn(`[scheduler] mid-pass manual check failed: ${describeError(err)}`);
+      }
+
       const [projectId, endUserId] = userKey.split("::");
       try {
-        const recommendations = await analyzeAndStoreRecommendations(projectId, endUserId, fallbackConfig);
+        const recommendations = await analyzeAndStoreRecommendations(projectId, endUserId, platformFallbackConfig());
         console.log(`  ✅ ${endUserId}: ${recommendations.length} LLM recommendation(s)`);
+        consecutiveFailures = 0;
       } catch (err) {
         console.warn(`  ⚠️ ${endUserId}: LLM unavailable — ${describeError(err)}`);
+        consecutiveFailures++;
+        if (consecutiveFailures >= 3) {
+          // Circuit breaker: the model is clearly down (each failure can take
+          // minutes to surface). Stop burning this tick; retry next poll.
+          console.warn(`  ⛔ ${consecutiveFailures} consecutive LLM failures — ending this pass early`);
+          break;
+        }
       }
     }
   }
@@ -154,11 +291,24 @@ async function main() {
   console.log(`✓ Marked ${marked} events as processed\n`);
 }
 
-// startWorker is called by index.ts — polls every 30 seconds
+// startWorker is called by index.ts — polls every 30 seconds.
+// In-flight guard: a tick that fires while the previous run is still executing
+// (slow LLM calls can take minutes) is skipped, so runs never overlap within
+// this instance. Cross-instance overlap is handled by the atomic claim in
+// processManualRequests.
 export function startWorker() {
   console.log("[scheduler] Worker started — polling every 30s");
-  const poll = () => {
-    runOnce().catch((err) => console.warn("[scheduler] Poll failed:", describeError(err)));
+  let running = false;
+  const poll = async () => {
+    if (running) return;
+    running = true;
+    try {
+      await runOnce();
+    } catch (err) {
+      console.warn("[scheduler] Poll failed:", describeError(err));
+    } finally {
+      running = false;
+    }
   };
   poll(); // Run immediately
   setInterval(poll, 30000);

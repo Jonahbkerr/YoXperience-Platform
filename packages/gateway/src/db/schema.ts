@@ -80,6 +80,14 @@ export const projects = pgTable("projects", {
   llmApiKeyLastFour: text("llm_api_key_last_four"), // for display only
   // ── Goal-driven prompt steering: the objective the AI optimizes toward ──
   optimizationGoal: text("optimization_goal"),
+  // ── AI processing control ──
+  // "auto"   = worker runs LLM analysis continuously as telemetry streams in
+  // "manual" = telemetry + EMA keep flowing, but LLM analysis only runs when
+  //            the owner clicks "Run analysis now" (analysisRequestedAt set)
+  aiAnalysisMode: text("ai_analysis_mode").notNull().default("auto"),
+  analysisRequestedAt: timestamp("analysis_requested_at", { withTimezone: true }), // pending manual run
+  lastAnalysisAt: timestamp("last_analysis_at", { withTimezone: true }),
+  lastAnalysisStatus: text("last_analysis_status"), // human-readable outcome of the last run
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

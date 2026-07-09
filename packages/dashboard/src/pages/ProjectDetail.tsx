@@ -16,6 +16,10 @@ interface Project {
   llmModel?: string | null;
   llmApiKeyLastFour?: string | null;
   hasLlmKey?: boolean;
+  aiAnalysisMode?: "auto" | "manual";
+  analysisRequestedAt?: string | null;
+  lastAnalysisAt?: string | null;
+  lastAnalysisStatus?: string | null;
 }
 
 interface ApiKey {
@@ -107,6 +111,141 @@ const PROVIDER_PRESETS: Record<string, { baseUrl: string; hint: string }> = {
   groq: { baseUrl: "https://api.groq.com/openai/v1", hint: "e.g. llama-3.3-70b-versatile" },
   custom: { baseUrl: "", hint: "any OpenAI-compatible /chat/completions endpoint" },
 };
+
+// ── AI processing: continuous vs owner-initiated analysis + Run now ──
+function AiProcessingSection({ project, onSaved }: { project: Project; onSaved: () => void }) {
+  const [mode, setMode] = useState<"auto" | "manual">(project.aiAnalysisMode ?? "auto");
+  const [switching, setSwitching] = useState(false);
+  // Server-derived run state: "queued" = analysisRequestedAt set (worker hasn't
+  // claimed it yet), "running" = worker claimed it (lastAnalysisStatus =
+  // "running"), null = idle. Long LLM runs are legitimate — we keep polling
+  // instead of guessing failure from a short client-side timer.
+  const [queued, setQueued] = useState<boolean>(!!project.analysisRequestedAt);
+  const [runningOnWorker, setRunningOnWorker] = useState<boolean>(project.lastAnalysisStatus === "running");
+  const [lastAt, setLastAt] = useState<string | null>(project.lastAnalysisAt ?? null);
+  const [lastStatus, setLastStatus] = useState<string | null>(project.lastAnalysisStatus ?? null);
+  const [err, setErr] = useState<string | null>(null);
+  const pending = queued || runningOnWorker;
+
+  const setModeRemote = async (m: "auto" | "manual") => {
+    if (m === mode || switching) return;
+    setSwitching(true); setErr(null);
+    const prev = mode;
+    setMode(m); // optimistic
+    try {
+      await api(`/api/projects/${project.id}`, { method: "PATCH", body: JSON.stringify({ aiAnalysisMode: m }) });
+      onSaved();
+    } catch (e: any) {
+      setMode(prev);
+      setErr(e.message || "Failed to change mode.");
+    } finally { setSwitching(false); }
+  };
+
+  // Poll the project while a run is queued/running. The worker claims the
+  // request (clears analysisRequestedAt, sets status "running"), then stamps
+  // the final lastAnalysisAt/Status when done. Runs with many users on a slow
+  // local model can legitimately take 10+ minutes, so the deadline is generous
+  // and only fires when the state genuinely stopped progressing.
+  useEffect(() => {
+    if (!pending) return;
+    let cancelled = false;
+    const started = Date.now();
+    const tick = async () => {
+      if (cancelled) return;
+      try {
+        const res = await api<{ project: Project }>(`/api/projects/${project.id}`);
+        const p = res.project;
+        if (cancelled) return;
+        const stillQueued = !!p.analysisRequestedAt;
+        const stillRunning = p.lastAnalysisStatus === "running";
+        setQueued(stillQueued);
+        setRunningOnWorker(stillRunning);
+        setLastAt(p.lastAnalysisAt ?? null);
+        setLastStatus(p.lastAnalysisStatus ?? null);
+        if (!stillQueued && !stillRunning) {
+          onSaved();
+          return; // finished — stop polling
+        }
+      } catch { /* transient — keep polling */ }
+      if (Date.now() - started < 30 * 60 * 1000) {
+        setTimeout(tick, 5000);
+      } else {
+        setQueued(false);
+        setRunningOnWorker(false);
+        setErr("No progress after 30 minutes — the worker may be down. Check the Railway logs, then refresh this page.");
+      }
+    };
+    const t = setTimeout(tick, 5000);
+    return () => { cancelled = true; clearTimeout(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pending, project.id]);
+
+  const runNow = async () => {
+    setErr(null);
+    try {
+      await api(`/api/projects/${project.id}/analyze-now`, { method: "POST" });
+      setQueued(true);
+    } catch (e: any) {
+      setErr(e.message || "Failed to queue the run.");
+    }
+  };
+
+  const modeBtn = (m: "auto" | "manual", label: string) => (
+    <button
+      onClick={() => setModeRemote(m)}
+      disabled={switching}
+      style={{
+        padding: "6px 14px", fontSize: "var(--yc-font-size-sm)", borderRadius: "var(--yc-radius-md)", cursor: "pointer",
+        border: "1px solid", borderColor: mode === m ? "var(--yc-color-primary)" : "var(--yc-color-border)",
+        background: mode === m ? "var(--yc-color-primary)" : "transparent",
+        color: mode === m ? "#fff" : "var(--yc-color-text-secondary)",
+        fontWeight: "var(--yc-font-weight-medium)",
+      }}
+    >
+      {label}
+    </button>
+  );
+
+  return (
+    <div style={{ ...cardStyle, marginBottom: "var(--yc-space-8)" }}>
+      <h2 style={{ fontSize: "var(--yc-font-size-lg)", fontWeight: "var(--yc-font-weight-semibold)", marginBottom: 4 }}>AI processing</h2>
+      <p style={{ fontSize: "var(--yc-font-size-sm)", color: "var(--yc-color-text-secondary)", marginBottom: "var(--yc-space-4)" }}>
+        Telemetry is always collected. This controls when the AI analyzes it: continuously as it streams in, or only when you say so.
+      </p>
+
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        {modeBtn("auto", "Continuous")}
+        {modeBtn("manual", "Manual — I decide when")}
+        <button onClick={runNow} disabled={pending} style={{ ...btnOutline, marginLeft: "auto", opacity: pending ? 0.6 : 1 }}>
+          {pending ? "⏳ Running…" : "▶ Run analysis now"}
+        </button>
+      </div>
+
+      <div style={{ fontSize: "var(--yc-font-size-xs)", color: "var(--yc-color-text-tertiary)", marginTop: "var(--yc-space-3)", lineHeight: 1.5 }}>
+        {mode === "auto"
+          ? "The engine analyzes new visitor behavior with the AI every ~30 seconds."
+          : "The AI only runs when you click \"Run analysis now\" — it then analyzes every visitor active in the last 24 hours. Variant learning (EMA) and data collection continue either way."}
+      </div>
+
+      {pending && (
+        <div style={{ marginTop: "var(--yc-space-3)", fontSize: "var(--yc-font-size-sm)", color: "var(--yc-color-primary)" }}>
+          {runningOnWorker
+            ? "Running — the AI is analyzing your recent visitors. Large runs on a local model can take several minutes; this page updates automatically."
+            : "Queued — the engine picks it up within ~30 seconds. This page updates automatically when it finishes."}
+        </div>
+      )}
+      {!pending && lastAt && (
+        <div style={{ marginTop: "var(--yc-space-3)", fontSize: "var(--yc-font-size-sm)", color: "var(--yc-color-text-secondary)" }}>
+          Last run {new Date(lastAt).toLocaleString()}
+          {lastStatus ? <> — <span style={{ color: lastStatus.startsWith("ok") ? "var(--yc-color-success, #22c55e)" : lastStatus.startsWith("partial") ? "var(--yc-color-warning, #f59e0b)" : "var(--yc-color-error)" }}>{lastStatus}</span></> : null}
+        </div>
+      )}
+      {err && (
+        <div style={{ marginTop: "var(--yc-space-2)", fontSize: "var(--yc-font-size-sm)", color: "var(--yc-color-error)" }}>{err}</div>
+      )}
+    </div>
+  );
+}
 
 // ── AI & Goals: bring-your-own LLM connection + optimization goal ──
 function AiGoalsSection({ project, onSaved }: { project: Project; onSaved: () => void }) {
@@ -416,6 +555,7 @@ export default function ProjectDetail() {
       </div>
 
       {/* AI & Goals */}
+      <AiProcessingSection project={project} onSaved={fetchProject} />
       <AiGoalsSection project={project} onSaved={fetchProject} />
 
       {/* New key banner */}

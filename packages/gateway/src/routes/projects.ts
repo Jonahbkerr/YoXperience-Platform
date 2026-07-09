@@ -158,6 +158,7 @@ router.patch(
       const {
         name, slug, coreApiUrl, siteUrl, experimentsEnabled,
         optimizationGoal, llmProvider, llmBaseUrl, llmModel, llmApiKey,
+        aiAnalysisMode,
       } = req.body;
 
       // Verify project belongs to org
@@ -201,6 +202,15 @@ router.patch(
       // ── Goal-driven prompt steering ──
       if (optimizationGoal !== undefined)
         updates.optimizationGoal = optimizationGoal ? String(optimizationGoal).slice(0, 2000) : null;
+
+      // ── AI processing mode: continuous vs owner-initiated analysis ──
+      if (aiAnalysisMode !== undefined) {
+        if (!["auto", "manual"].includes(aiAnalysisMode)) {
+          res.status(400).json({ error: "aiAnalysisMode must be 'auto' or 'manual'" });
+          return;
+        }
+        updates.aiAnalysisMode = aiAnalysisMode;
+      }
 
       // ── Bring-your-own AI connection ──
       if (llmProvider !== undefined) updates.llmProvider = llmProvider || null;
@@ -306,6 +316,52 @@ router.post(
         clearTimeout(timer);
         res.json({ ok: false, error: (e as Error).name === "AbortError" ? "Timed out after 15s" : (e as Error).message });
       }
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /:projectId/analyze-now — queue an owner-initiated AI analysis run.
+// Sets analysis_requested_at; the always-on worker (30s poll) picks it up,
+// analyzes every user active in the last 24h, then records
+// last_analysis_at/last_analysis_status and clears the request. Works in both
+// modes ("manual" projects rely on it; "auto" projects can use it to force an
+// immediate pass).
+router.post(
+  "/:projectId/analyze-now",
+  requireAuth,
+  requireOrgAccess("admin"),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const orgId = req.auth!.orgId;
+      const { projectId } = req.params;
+
+      const [existing] = await db
+        .select({ id: projects.id, analysisRequestedAt: projects.analysisRequestedAt })
+        .from(projects)
+        .where(and(eq(projects.id, projectId), eq(projects.orgId, orgId)))
+        .limit(1);
+
+      if (!existing) {
+        res.status(404).json({ error: "Project not found" });
+        return;
+      }
+
+      // Idempotent: re-clicking while a run is pending just refreshes the
+      // request timestamp — the worker clears only the timestamp it picked up.
+      const requestedAt = new Date();
+      await db
+        .update(projects)
+        .set({ analysisRequestedAt: requestedAt })
+        .where(eq(projects.id, projectId));
+
+      res.json({
+        ok: true,
+        requestedAt: requestedAt.toISOString(),
+        alreadyPending: !!existing.analysisRequestedAt,
+        note: "The worker polls every 30s — check lastAnalysisAt/lastAnalysisStatus on the project.",
+      });
     } catch (err) {
       next(err);
     }

@@ -20,6 +20,9 @@
     "test": "npm -w @yoxperience/gateway run test && npm -w @yoxperience/sdk run test && npm -w @yoxperience/landing run test && npm -w @yoxperience/dashboard run test",
     "setup": "npm install && npm run gateway:migrate"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": ["bcrypt", "better-sqlite3", "esbuild"]
+  },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
     "concurrently": "^9.1.0",

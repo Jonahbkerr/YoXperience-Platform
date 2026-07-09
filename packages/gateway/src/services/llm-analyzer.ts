@@ -273,12 +273,15 @@ export async function analyzeWithLLM(
   const res = await fetch(`${config.url}/chat/completions`, {
     method: "POST",
     headers,
+    signal: AbortSignal.timeout(600_000), // 10 min timeout for slow local models
     body: JSON.stringify({
       model: config.model,
       messages: [
         { role: "user", content: systemPrompt },
       ],
       temperature: config.temperature ?? 0.2,
+      // Thinking models spend tokens reasoning before the JSON — too small a
+      // cap truncates mid-object and the whole analysis hard-fails.
       max_tokens: 4000,
     }),
   });
@@ -288,8 +291,17 @@ export async function analyzeWithLLM(
     throw new Error(`LM HTTP ${res.status}: ${body.slice(0, 300)}`);
   }
 
-  const json = await res.json() as { choices: { message: { content: string } }[] };
+  const json = await res.json() as { choices: { message: { content: string; reasoning_content?: string } }[] };
   let content = json.choices[0]?.message?.content;
+  // Some thinking models (e.g. Gemma variants) return an empty `content` and
+  // put everything in `reasoning_content`. Use it VERBATIM as the fallback —
+  // extractJsonObject below already handles channel-tag splitting robustly
+  // (scans segments last-to-first, falls back to the whole text), so slicing
+  // here would just reintroduce the "JSON wasn't in the last segment" bug.
+  if (!content || content.trim().length === 0) {
+    const rc = json.choices[0]?.message?.reasoning_content;
+    if (rc && rc.trim().length > 0) content = rc;
+  }
   if (!content) throw new Error("LM returned empty content");
 
   const jsonStr = extractJsonObject(content);
