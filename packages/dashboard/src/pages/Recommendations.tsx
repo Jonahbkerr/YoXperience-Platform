@@ -147,6 +147,23 @@ export default function Recommendations() {
       return next;
     });
 
+  // Toggle a single variant in/out of the comparison grid.
+  const togglePreview = (key: string) =>
+    setOpenPreviews((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
+  // Close every open preview for one slot.
+  const clearSlotPreviews = (slotKey: string) =>
+    setOpenPreviews((prev) => {
+      const next = new Set<string>();
+      for (const k of prev) if (!k.startsWith(`${slotKey}::`)) next.add(k);
+      return next;
+    });
+
   const applyDefault = async (rec: Recommendation) => {
     if (!selectedProject || !rec.slotId || !rec.winner) return;
     setBusy(rec.slotKey);
